@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TennisPrism · 开始一次网球复盘</title><link rel="stylesheet" href="/entry-assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="/start"><span class="brand-mark">↗</span> Tennis<span>Prism</span></a><span class="edition">YOUR NEXT SESSION STARTS HERE</span><a class="example-link" href="#what-you-get">你会获得什么 <span>↓</span></a></header>
+<main>
+  <div class="intro"><div class="eyebrow"><span></span> 从一段视频，找到下一次训练的重点</div><h1>看清这一拍，<br class="mobile-break">练好下一拍<span class="title-dot">。</span></h1><p>选一段你打网球的视频。看看现在的水平，更知道接下来怎么练。</p></div>
+  <div class="workspace">
+    <section class="intake-card" aria-label="提交网球视频">
+      <div class="card-heading"><div><span class="step-label">01 / YOUR VIDEO</span><h2 id="card-title">从你的视频开始</h2></div><span class="local-badge"><i></i> 本机视频</span></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="upload-area">
+        <div class="dropzone" id="dropzone">
+          <div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="8" y="10" width="32" height="28" rx="7"/><path d="M24 30V17m-5 5 5-5 5 5M14 34h20"/></svg></div>
+          <h3>把球场上的你，带到这里</h3><p>拖入视频，或从电脑里选择</p>
+          <button id="choose" class="primary" type="button">选择视频 <span>＋</span></button>
+          <input id="file" type="file" accept=".mp4,.mov,.m4v,.webm,.mkv,.avi" hidden aria-label="选择网球视频">
+          <small>MP4、MOV 等常见格式 · 单个文件不超过 4 GB</small>
+        </div>
+        <p class="capture-tip"><span>◎</span> 固定机位、能看清全身的连续对打，更容易获得有用的建议。</p>
+      </div>
+      <div id="selected-area" hidden>
+        <div class="preview-wrap"><video id="preview" controls playsinline preload="metadata" aria-label="所选视频预览"></video><div id="preview-wait"><span class="spinner"></span><p>正在准备视频预览</p></div></div>
+        <div class="file-info"><div><strong id="filename"></strong><span id="filemeta"></span></div><button class="text-button" id="replace" type="button">换一段</button></div>
+      </div>
+      <div id="upload-progress" class="upload-progress" hidden><div><span id="upload-label">正在接收视频</span><span id="upload-percent"></span></div><progress id="upload-meter" max="100" value="0" aria-label="视频准备进度"></progress></div>
+      <div id="options-area">
+        <div class="target-default"><span class="person-icon" aria-hidden="true">◉</span><div><strong id="target-label">默认分析离镜头最近的人</strong><small>无需标记，直接开始就好</small></div><button id="change-target" class="text-button" type="button" aria-expanded="false" aria-controls="target-options">更改</button></div>
+        <div id="target-options" class="target-options" hidden>
+          <label><input type="radio" name="target" value="near" checked> 离镜头最近的人</label>
+          <label><input type="radio" name="target" value="far"> 镜头远处的人</label>
+          <label><input type="radio" name="target" value="description"> 我来描述</label>
+          <label id="description-label" hidden>球员特征<input id="target-description" type="text" maxlength="500" placeholder="例如：右侧穿白色上衣的人"></label>
+        </div>
+        <details id="focus-details" class="focus-details"><summary>有想重点看的问题？<span>选填 ＋</span></summary><div class="focus-body"><div class="focus-chips" aria-label="关注方向"><button type="button" aria-pressed="false">正反手动作</button><button type="button" aria-pressed="false">脚步与回位</button><button type="button" aria-pressed="false">训练怎么安排</button></div><label class="sr-only" for="focus">补充想改善的问题</label><textarea id="focus" rows="2" maxlength="2500" placeholder="例如：反手遇到高球时总感觉来不及，怎么练？"></textarea></div></details>
+      </div>
+      <div id="submit-area" class="submit-area"><button id="start" class="primary start" type="button" disabled>开始分析 <span>↗</span></button><p id="start-hint">选择视频后即可开始，不需要填写其他信息。</p></div>
+      <section id="task-panel" class="task-panel" aria-live="polite" hidden>
+        <div class="task-title"><span id="task-symbol" class="task-symbol">↗</span><div><span class="step-label">02 / REVIEW</span><h3 id="task-title">正在整理视频</h3></div></div><p id="task-message"></p>
+        <ol class="task-steps"><li id="stage-video" class="done">视频已就绪</li><li id="stage-evidence">整理动作画面</li><li id="stage-analysis">Agent 分析与训练建议</li></ol>
+        <div id="handoff" hidden><p>回到刚才的对话，说一句：</p><div class="continue-row"><code id="continue-text"></code><button id="copy" class="text-button" type="button">复制</button></div><small>任务已经保存在本机，刷新页面也能继续。</small></div>
+        <button id="retry" class="text-button" type="button" hidden>重新提交分析</button>
+        <div id="report-summary" hidden></div><button id="another" class="text-button" type="button">另选一段视频</button>
+      </section>
+      <div class="privacy"><svg aria-hidden="true" viewBox="0 0 20 20"><rect x="5" y="9" width="10" height="8" rx="2"/><path d="M7 9V6a3 3 0 0 1 6 0v3"/></svg><p>原视频保留在本机。分析时，抽样画面会交给你正在使用的 Agent 模型。</p></div>
+    </section>
+    <aside class="expectations">
+      <div class="court-card"><div class="court-kicker">LESS GUESSING. MORE PRACTICE.</div><svg viewBox="0 0 360 250" role="img" aria-label="默认观察近端球员的球场示意"><defs><linearGradient id="court-fill" x2="0" y2="1"><stop stop-color="#39604b"/><stop offset="1" stop-color="#244736"/></linearGradient></defs><path fill="url(#court-fill)" stroke="#b6c6aa" stroke-width="1.2" d="M95 31h170l65 194H30Z"/><g fill="none" stroke="#acbea0" stroke-width="1"><path d="m114 31-49 194m181-194 49 194M180 58v116M86 58h188M48 174h264M62 128h236"/><path stroke="#e2e8d5" stroke-width="2" d="M48 127h264"/></g><path d="M180 196Q134 115 206 67" fill="none" stroke="#c5d78f" stroke-width="1.2" stroke-dasharray="4 5" opacity=".65"/><circle cx="206" cy="67" r="5" fill="#99af93"/><ellipse cx="174" cy="214" rx="27" ry="8" fill="#c4df8440"/><circle cx="174" cy="205" r="11" fill="#d6ed8b"/><circle cx="174" cy="205" r="19" fill="none" stroke="#d6ed8b" stroke-opacity=".4"/><path d="m199 202 22-18h66" fill="none" stroke="#d6ed8b" stroke-width=".8"/><text x="226" y="177" fill="#e1ebc9" font-size="11">默认分析你</text></svg><p>镜头近处，是这次复盘的主角。</p></div>
+      <div class="outcomes" id="what-you-get"><span class="step-label">WHAT YOU TAKE TO COURT</span><h2>带走的不只是一个分数</h2><div class="outcome"><span>01</span><div><h3>看清现在的水平</h3><p>结合真实画面给出初步判断，说明判断有多确定。</p></div></div><div class="outcome"><span>02</span><div><h3>找到值得留意的问题</h3><p>分清看见的动作与待验证的原因，回到视频核对。</p></div></div><div class="outcome"><span>03</span><div><h3>知道下一次怎么练</h3><p>给出专项练习、做法和验证方式，让建议落到场上。</p></div></div></div>
+      <div class="report-note"><span>＋</span><p>先在对话里看初步结论。想看得更细，再生成带视频、动作骨架与证据的完整报告。</p></div>
+    </aside>
+  </div>
+  <footer><span>TennisPrism · 复盘 / 训练 / 再验证</span><span>当前 Agent 分析 · 原视频保留在本机</span></footer>
+</main><script src="/entry-assets/app.js"></script></body></html>

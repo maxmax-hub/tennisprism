@@ -1,0 +1,37 @@
+name: Validate Skill
+
+on:
+  push:
+    branches: [main]
+    paths: ['skills/**', 'tests/**', 'tools/**', 'requirements-dev.txt', '.github/workflows/validate.yml']
+  pull_request:
+    paths: ['skills/**', 'tests/**', 'tools/**', 'requirements-dev.txt', '.github/workflows/validate.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install development dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Check behavior and browser scripts
+        run: |
+          python -m pytest tests/test_skill.py -q -p no:cacheprovider
+          node --check skills/tennisprism/assets/entry/app.js
+          node --check skills/tennisprism/assets/report/app.js
+      - name: Validate standalone package
+        run: python tools/package_skill.py

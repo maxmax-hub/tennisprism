@@ -1,0 +1,45 @@
+name: Verify public installation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install the published Skill with the official skills CLI
+        env:
+          SKILL_SOURCE: ${{ github.repository }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/tennisprism-install"
+          cd "$RUNNER_TEMP/tennisprism-install"
+          npx --yes skills@1.7.4 add "$SKILL_SOURCE" --skill tennisprism --agent codex --copy --yes
+      - name: Check installed files and runtime
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          source = Path('skills/tennisprism')
+          installed = Path(os.environ['RUNNER_TEMP']) / 'tennisprism-install/.agents/skills/tennisprism'
+          files = [p for p in source.rglob('*') if p.is_file()]
+          for original in files:
+              relative = original.relative_to(source)
+              assert (installed / relative).read_bytes() == original.read_bytes(), str(relative)
+          print(f'Public installation verified: {len(files)} matching files')
+          PY
+          python -m pip install -r "$RUNNER_TEMP/tennisprism-install/.agents/skills/tennisprism/scripts/requirements.txt"
+          python "$RUNNER_TEMP/tennisprism-install/.agents/skills/tennisprism/scripts/coach.py" doctor
