@@ -2,8 +2,8 @@
 name: tennisprism
 description: 分析用户的网球视频，给出有画面依据的水平判断、动作复盘和具体训练建议；没有视频时打开本地选择页，按需生成带逐帧回看与真实姿态骨架的 H5 报告。适用于个人打球复盘与训练，不用于医学诊断或官方评级。
 metadata:
-  version: "1.0.0"
-  compatibility: "Host Agent must view images, read files and run Python 3.10+. Optional pose dependencies are separate."
+  version: "1.0.1"
+  compatibility: "Host Agent must view images, read files and run Python 3.10+. Web intake requires an active host turn with repeated bounded waits. Optional pose dependencies are separate."
 license: MIT
 ---
 
@@ -16,16 +16,18 @@ license: MIT
 技能目录是当前 `SKILL.md` 的父目录。所有脚本用该目录的绝对路径调用，运行资料写到用户任务目录中的独立 workspace，不能写入技能目录。先运行 `scripts/coach.py doctor`；缺依赖时依照 [运行与接续](references/runtime.md) 安装到任务虚拟环境。复用可用环境，不每次重新安装。脚本输出 JSON，失败时必须处理具体错误，不能继续展示旧报告。
 
 - **已有附件或路径**：确认宿主实际能读取原文件，运行 `coach.py prepare --workspace ... --video ...`。不要要求用户重复上传。可带用户明确的 `--target`、`--description`、`--focus`；默认 near。
-- **没有视频**：运行 `coach.py serve --workspace ...`，使用输出的本机 URL 打开选择页。用户直接选视频，球员与关注点可选。然后调用 `coach.py wait --workspace ... --timeout 25`，获得真实任务；读取对应 `inspect` 输出和证据。每次等待不超过 50 秒，保持当前任务接续；宿主不能等待或任务结束时，说明回到对话说“继续分析”，不能承诺后台唤醒。详见 [运行与接续](references/runtime.md)。
+- **没有视频**：运行 `coach.py serve --workspace ...`，打开输出的选择页，立即在当前任务中调用 `coach.py wait --workspace ... --timeout 25`。返回 `waiting` 就再次调用，直到收到真实任务；一次等待超时不代表整个任务结束。**不能发出最终答复后等待用户说“继续分析”，也不能用脱离 Agent 的循环假装分析端在线。** 收到 `ready` 后直接看图片、形成报告并 `submit`，网页自动显示结果。处理期间每约 60 秒调用 `coach.py heartbeat --workspace ... --run ...`，完成后 `disconnect`。用户只需在网页选择视频、点击开始分析。详见 [运行与接续](references/runtime.md)。
 - **只有远程视频链接**：只有实际取得可观看的授权媒体后才分析；登录受限或看不到时，说明需要可访问的视频或本地文件，不能把链接标题当视频内容。
 
 告诉用户素材在本机整理，选中的画面将由当前 Agent 所用模型分析；这不等于离线推理。沿用当前 Agent 及用户选定的模型，不默认启动另一个 Codex/Claude CLI、不提取登录令牌、不自行改成付费 API。
+
+网页入口需要宿主能够保持当前执行、运行命令并实际看图。若宿主强制结束、用户取消或工具不支持等待，执行 `disconnect` 并如实说明该宿主当前无法完成网页流程；保留任务，不让页面伪装仍在分析。不要把另填 API Key 或手动回聊天接续作为正常流程。纯 Skill 不能唤醒已结束的聊天；不能宣称已验证千问办公或其他未实测宿主。
 
 ## 看画面，形成判断
 
 阅读 [教练判断与练习设计](references/coaching.md) 和 [等级约定](references/scoring.md)。打开 `inspect` 返回的真实图片；仅知道文件存在、只读 manifest 或看到自动骨架都不构成观看。
 
-先看概览，再看连续时序；准备早晚、击球时机、回位等判断要有前后过程。样本不包含有效回合时，用 `coach.py sample` 围绕实际发现的时刻补采样；不要把休息或捡球当动作证据。长片仍是抽样复盘，不能声称看完每一拍或统计全场失误率。
+先看概览，再看连续时序；准备早晚、击球时机、回位等判断要有前后过程。样本不包含有效回合时，用 `coach.py sample --workspace ... --run <当前完整任务号> --focus-times ...` 补采样；它继承目标与关注点，网页自动跟随新任务。随后对新任务 heartbeat，看新证据并提交新报告。不要把休息或捡球当动作证据。长片仍是抽样复盘，不能声称看完每一拍或统计全场失误率。
 
 用 [报告结构](references/report.md) 生成 JSON，真实 `evidence_id`、帧号和时间必须来自本次 manifest。使用 `coach.py submit` 验证和保存。验证器不判断教练结论是否正确；检查画面与结论仍是 Agent 的责任。
 
@@ -35,7 +37,7 @@ license: MIT
 
 ## 按需生成 H5
 
-初步答复后询问是否需要完整视频复盘页；用户已要求完整报告、骨架、逐帧回看，或点击页面上的“生成完整视频复盘”时，直接继续，不重复确认。
+对话附件流程在初步答复后询问是否需要完整视频复盘页；用户已要求时直接继续。网页流程由页面按钮直接生成 H5，不需要用户回到聊天，也不需要 Agent 保持等待第二次请求。已有复核姿态就包含骨架，没有就明确显示无骨架版本；用户另行要求真实骨架时再按下文执行。
 
 阅读 [H5 与姿态](references/h5.md)。生成真实模型骨架前选择正确人物范围并检查模型结果；依赖不可用或结果不可靠时保留视频与训练报告，明确骨架未生成，不画假骨架。执行 `coach.py h5` 后通过本机服务展示；页面包含原声预览、真实时间点、逐帧/慢放、可用时的骨架与跟随放大、等级、观察和专项练习。个人视频只进入该用户的报告目录，不能进入公开 Skill 包。
 

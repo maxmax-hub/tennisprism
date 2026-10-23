@@ -8,7 +8,9 @@ from pathlib import Path
 import shutil
 import socket
 import sys
-import time
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 SKILL=Path(__file__).resolve().parents[1]
 
@@ -18,6 +20,19 @@ def workspace(value):
     p=Path(value).expanduser().resolve()
     if p==SKILL or p.is_relative_to(SKILL):raise ValueError('Workspace must be outside the installed skill directory')
     return p
+
+def agent_call(root, action, body=None):
+    """Use only our loopback mailbox; never read host account credentials."""
+    config=json.loads((root/'server.json').read_text(encoding='utf-8'))
+    base=config['url'];url=urlparse(base)
+    if url.scheme!='http' or url.hostname!='127.0.0.1' or not url.port or url.path or url.username or url.password or url.query or url.fragment:
+        raise ValueError('Invalid local server URL; start serve again')
+    with urlopen(base+'/api/bootstrap',timeout=5) as response:token=json.load(response)['csrf_token']
+    request=Request(base+'/api/agent/'+action,data=json.dumps(body or {}).encode(),headers={'Content-Type':'application/json','X-TennisAI-Token':token},method='POST')
+    try:
+        with urlopen(request,timeout=60) as response:return json.load(response)
+    except HTTPError as exc:
+        raise ValueError(json.load(exc).get('detail','Local Agent connection failed')) from exc
 
 def info(store,r):
     folder=store.path('runs',r['id'])
@@ -44,12 +59,24 @@ def prepare(args):
             store.update('videos',v['id'],preview_url=f"/api/videos/{v['id']}/preview",thumbnail_url=f"/api/videos/{v['id']}/thumbnail")
             app.state.prepare_video(v['id']);v=store.get('videos',v['id'])
             if v['status']!='ready':raise ValueError(v['error'])
-        else:v=store.get('videos',args.video_id)
+        else:
+            parent=store.get('runs',args.run) if args.run else None
+            if parent and (parent['status']!='awaiting_report' or parent.get('superseded_by')):
+                raise ValueError('Supplement only the current uncompleted run')
+            v=store.get('videos',parent['video_id'] if parent else args.video_id)
+            args.target=args.target or (parent['target']['position'] if parent else 'near')
+            args.description=args.description if args.description is not None else (parent['target']['description'] if parent else '')
+            args.focus=args.focus if args.focus is not None else (parent['focus'] if parent else '')
+            args.start=args.start if args.start is not None else (parent['window']['start'] if parent else 0)
+            args.end=args.end if args.end is not None else (parent['window']['end'] if parent else None)
         payload=RunRequest(target={'position':args.target,'description':args.description},focus=args.focus,start=args.start,end=args.end,focus_times=args.focus_times,mode='prepare')
         r=app.state.create_run(v['id'],payload)
         app.state.executor.shutdown(wait=True)
         r=store.get('runs',r['id']);output({**info(store,r),'video_id':v['id']})
         if r['status']=='error':return 1
+        if args.command=='sample' and parent:
+            store.update('runs',parent['id'],superseded_by=r['id'])
+            store.update('runs',r['id'],supersedes=parent['id'])
     finally:app.state.executor.shutdown(wait=True)
     return 0
 
@@ -60,10 +87,14 @@ def main():
     serve=sub.add_parser('serve');serve.add_argument('--workspace',required=True);serve.add_argument('--port',type=int,default=0)
     for cmd in ['prepare','sample']:
         p=sub.add_parser(cmd);p.add_argument('--workspace',required=True)
-        p.add_argument('--video' if cmd=='prepare' else '--video-id',required=True)
-        p.add_argument('--target',choices=['near','far','description'],default='near');p.add_argument('--description',default='');p.add_argument('--focus',default='');p.add_argument('--start',type=float,default=0);p.add_argument('--end',type=float);p.add_argument('--focus-times',type=float,nargs='*',default=[])
+        if cmd=='prepare':p.add_argument('--video',required=True)
+        else:
+            group=p.add_mutually_exclusive_group(required=True);group.add_argument('--video-id');group.add_argument('--run')
+        p.add_argument('--target',choices=['near','far','description'],default='near' if cmd=='prepare' else None);p.add_argument('--description',default='' if cmd=='prepare' else None);p.add_argument('--focus',default='' if cmd=='prepare' else None);p.add_argument('--start',type=float,default=0 if cmd=='prepare' else None);p.add_argument('--end',type=float);p.add_argument('--focus-times',type=float,nargs='*',default=[])
     p=sub.add_parser('inspect');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
     p=sub.add_parser('wait');p.add_argument('--workspace',required=True);p.add_argument('--timeout',type=float,default=25);p.add_argument('--exclude',nargs='*',default=[])
+    p=sub.add_parser('heartbeat');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
+    p=sub.add_parser('disconnect');p.add_argument('--workspace',required=True)
     p=sub.add_parser('submit');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True);p.add_argument('--report',required=True)
     p=sub.add_parser('h5');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
     args=parser.parse_args()
@@ -81,23 +112,22 @@ def main():
         sock=socket.socket();sock.bind(('127.0.0.1',args.port));sock.listen(128)
         port=sock.getsockname()[1];url=f'http://127.0.0.1:{port}'
         (root/'server.json').write_text(json.dumps({'url':url,'port':port,'workspace':str(root)},ensure_ascii=False),encoding='utf-8')
-        output({'url':url+'/start','workspace':str(root),'analysis':'host Agent; local preparation only'})
+        output({'url':url+'/start','workspace':str(root),'analysis':'host Agent; local preparation only', 'next_action':'Open the page, then call wait repeatedly in this active turn. Do not end the turn while the user selects/uploads a video.'})
         uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=port,log_level='warning')).run(sockets=[sock]);return 0
     from tennis_runtime.store import Store,now
     store=Store(root)
+    if args.command=='disconnect':output(agent_call(root,'disconnect'));return 0
+    if args.command=='heartbeat':output(agent_call(root,'heartbeat',{'run_id':args.run}));return 0
     if args.command=='wait':
         if not 0<=args.timeout<=50:raise ValueError('timeout must be between 0 and 50 seconds')
-        deadline=time.monotonic()+args.timeout
-        while True:
-            ready=[r for r in store.list('runs') if r['id'] not in args.exclude and (r['status']=='awaiting_report' or (r.get('detail_requested') and not r.get('h5_url')))]
-            if ready or time.monotonic()>=deadline:
-                output({'status':'ready' if ready else 'waiting','runs':[info(store,r) for r in ready]});return 0
-            time.sleep(min(1,max(0,deadline-time.monotonic())))
+        result=agent_call(root,'wait',{'timeout':args.timeout,'exclude':args.exclude})
+        result['runs']=[info(store,r) for r in result['runs']]
+        output(result);return 0
     r=store.get('runs',args.run)
     if args.command=='inspect':output(info(store,r));return 0
     if args.command=='submit':
         from tennis_runtime import reporting
-        if r['status']!='awaiting_report':raise ValueError('Only a prepared, uncompleted run accepts a report')
+        if r['status']!='awaiting_report' or r.get('superseded_by'):raise ValueError('Only the current prepared, uncompleted run accepts a report')
         report=reporting.validate_report(json.loads(Path(args.report).read_text(encoding='utf-8')),r['manifest'])
         folder=store.path('runs',r['id'])
         with (folder/'report.json').open('x',encoding='utf-8') as f:json.dump(report,f,ensure_ascii=False,indent=2)

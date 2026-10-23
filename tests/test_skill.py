@@ -39,6 +39,7 @@ def server(monkeypatch):
     monkeypatch.setattr(app.state.executor,'submit',lambda fn,*args:fn(*args))
     with TestClient(app) as c:
         headers={'X-TennisAI-Token':c.get('/api/bootstrap').json()['csrf_token'],'Origin':'http://testserver'}
+        assert c.post('/api/agent/wait',json={'timeout':0},headers=headers).json()['status']=='waiting'
         v=c.post('/api/videos?filename=test.mp4',content=b'SYNTHETIC',headers=headers).json()
         r=c.post('/api/videos/'+v['id']+'/runs',json={},headers=headers).json()
         yield c,headers,app,r
@@ -62,7 +63,8 @@ def test_valid_report_and_h5_request_transition(server):
     assert c.post('/api/runs/'+r['id']+'/report',json=report(m),headers=h).status_code==200
     assert c.get('/api/entry/pending').json()['runs']==[]
     assert c.post('/api/runs/'+r['id']+'/request-h5',headers=h).status_code==200
-    assert c.get('/api/entry/pending').json()['runs'][0]['detail_requested']
+    assert c.get('/api/runs/'+r['id']).json()['h5_status']=='error'  # synthetic preview is not decodable
+    assert c.get('/api/entry/pending').json()['runs']==[]
     assert c.post('/api/runs/'+r['id']+'/report',json=report(m),headers=h).status_code==409
 
 @pytest.mark.parametrize('failure',['foreign','bad_frame','bad_time','quarter_rating','missing_reject_criterion','invented_reference','unsafe_link'])
@@ -84,3 +86,85 @@ def test_installation_tree_cannot_be_runtime_workspace():
 def test_h5_requires_real_completed_report(server):
     c,h,a,r=server
     with pytest.raises(ValueError):build(a.state.store,r)
+
+def test_web_refuses_submission_without_a_listening_agent(server):
+    c,h,a,r=server
+    c.post('/api/agent/disconnect',headers=h)
+    response=c.post('/api/videos/'+r['video_id']+'/runs',json={},headers=h)
+    assert response.status_code==409
+    assert c.get('/api/agent/status').json()['can_submit'] is False
+    assert c.post('/api/videos?filename=another.mp4',content=b'fixture',headers=h).status_code==409
+
+def test_wait_dispatches_upload_and_expiry_is_visible(server,monkeypatch):
+    c,h,a,r=server
+    response=c.post('/api/agent/wait',json={'timeout':0},headers=h)
+    assert response.status_code==200
+    assert response.json()['runs'][0]['id']==r['id']
+    status=c.get('/api/agent/status').json()
+    assert status['connected'] and status['phase']=='reviewing' and status['run_id']==r['id']
+    assert not status['can_submit']
+    a.state.agent.expires_at=0
+    assert not c.get('/api/agent/status').json()['connected']
+    # A late genuine report remains acceptable; a stale lease doesn't destroy evidence.
+    m=c.get('/api/runs/'+r['id']).json()['manifest']
+    assert c.post('/api/runs/'+r['id']+'/report',json=report(m),headers=h).status_code==200
+    assert c.get('/api/runs/'+r['id']).json()['status']=='completed'
+
+def test_h5_click_builds_without_another_chat_turn(server,monkeypatch):
+    from tennis_runtime import h5
+    c,h,a,r=server;m=c.get('/api/runs/'+r['id']).json()['manifest']
+    c.post('/api/runs/'+r['id']+'/report',json=report(m),headers=h)
+    calls=[]
+    def generate(store,run):
+        calls.append(run['id'])
+        store.update('runs',run['id'],h5_url='/reports/test/index.html',detail_requested=False)
+    monkeypatch.setattr(h5,'build',generate)
+    assert c.post('/api/runs/'+r['id']+'/request-h5',headers=h).status_code==200
+    assert c.get('/api/runs/'+r['id']).json()['h5_url']=='/reports/test/index.html'
+    c.post('/api/runs/'+r['id']+'/request-h5',headers=h)
+    assert calls==[r['id']]
+
+def test_connection_does_not_renew_from_browser_and_guards_heartbeat(server):
+    c,h,a,r=server
+    assert c.post('/api/agent/wait',json={'timeout':0}).status_code==403
+    c.post('/api/agent/wait',json={'timeout':0},headers=h)
+    expiry=a.state.agent.expires_at
+    c.get('/api/agent/status');c.get('/api/runs/'+r['id'])
+    assert a.state.agent.expires_at==expiry
+    assert c.post('/api/agent/wait',json={'timeout':0},headers=h).status_code==409
+    assert c.post('/api/agent/heartbeat',json={'run_id':r['id']},headers=h).status_code==200
+    a.state.agent.expires_at=0
+    assert c.get('/api/agent/status').json()['phase']=='offline'
+    assert c.post('/api/agent/wait',json={'timeout':0},headers=h).json()['runs'][0]['id']==r['id']
+
+def test_supplemented_run_follows_parent_target_and_web_task(server,monkeypatch):
+    import coach
+    from argparse import Namespace
+    c,h,a,r=server
+    a.state.store.update('runs',r['id'],target={'position':'far','description':''},focus='脚步',window={'start':1,'end':9})
+    # Same real command function; synchronous fixture isolates decoding from task continuity.
+    monkeypatch.setattr(main,'create_app',lambda root:a)
+    monkeypatch.setattr(coach,'output',lambda value:None)
+    args=Namespace(command='sample',workspace=str(a.state.store.root),run=r['id'],video_id=None,target=None,description=None,focus=None,start=None,end=None,focus_times=[3])
+    assert coach.prepare(args)==0
+    old=c.get('/api/runs/'+r['id']).json();new=c.get('/api/runs/'+old['superseded_by']).json()
+    assert new['target']['position']=='far' and new['focus']=='脚步'
+    assert new['supersedes']==r['id']
+    assert new['manifest']['evidence_id']!=old['manifest']['evidence_id']
+    assert c.post('/api/runs/'+r['id']+'/report',json=report(old['manifest']),headers=h).status_code==409
+    assert c.post('/api/agent/wait',json={'timeout':0},headers=h).json()['runs'][0]['id']==new['id']
+
+def test_h5_failure_and_restart_can_retry_without_losing_report(server,monkeypatch):
+    from tennis_runtime import h5
+    c,h,a,r=server;m=c.get('/api/runs/'+r['id']).json()['manifest']
+    c.post('/api/runs/'+r['id']+'/report',json=report(m),headers=h)
+    c.post('/api/runs/'+r['id']+'/request-h5',headers=h)
+    failed=c.get('/api/runs/'+r['id']).json()
+    assert failed['h5_status']=='error' and failed['h5_error'] and failed['report']
+    a.state.store.update('runs',r['id'],h5_status='building',detail_requested=True)
+    a.state.store.recover_interrupted()
+    assert a.state.store.get('runs',r['id'])['h5_status']=='error'
+    def generate(store,run):store.update('runs',run['id'],h5_url='/reports/retry/index.html',detail_requested=False)
+    monkeypatch.setattr(h5,'build',generate)
+    assert c.post('/api/runs/'+r['id']+'/request-h5',headers=h).json()['h5_url']=='/reports/retry/index.html'
+    assert c.get('/api/runs/'+r['id']).json()['status']=='completed'

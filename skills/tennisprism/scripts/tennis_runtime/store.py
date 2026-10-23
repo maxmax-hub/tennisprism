@@ -80,3 +80,6 @@ class Store:
             for record in self.list(kind):
                 if record["status"] in states:
                     self.update(kind, record["id"], status="error", error="上次运行在完成前中断。原始数据已保留，请重新上传或发起新的分析。", message="上次任务已中断")
+                if kind == 'runs' and record.get('h5_status') == 'building':
+                    self.update(kind, record['id'], h5_status='error', detail_requested=False,
+                                h5_error='上次生成完整复盘时服务中断，可在页面重试。')

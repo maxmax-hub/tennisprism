@@ -2,7 +2,7 @@
 
 **看清这一拍，知道下一次怎么练。**
 
-[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.0.0 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.0.0) · [验证记录](STATUS.md)
+[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.0.1 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.0.1) · [验证记录](STATUS.md)
 
 免费、MIT 开源的 Agent Skill。把网球视频交给你正在使用的 AI Agent，得到有画面依据的水平判断、动作复盘和具体训练建议；想看得更细，再生成带视频、逐帧回看和可选人体骨架的本地 H5 报告。
 
@@ -43,15 +43,16 @@ npx skills add maxmax-hub/tennisprism --skill tennisprism -a claude-code -g
 
 ### 不使用 Node.js：手动安装
 
-下载 [v1.0.0 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.0.0/tennisprism-1.0.0.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
+下载 [v1.0.1 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.0.1/tennisprism-1.0.1.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
 
 | 宿主 | 个人 Skill 目录 |
 |---|---|
 | Codex | `~/.agents/skills/tennisprism/` |
 | Claude Code | `~/.claude/skills/tennisprism/` |
+| 千问办公桌面端 | `~/.qwenworkcn/skills/tennisprism/`（完整文件夹；网页链路待宿主实测） |
 | 其他 Agent | 按其官方 Skill 导入方式安装整个文件夹 |
 
-如果之前安装过同名 Skill，先核对现有版本，避免重复安装或覆盖自己的修改。Codex 安装目录参考[官方说明](https://learn.chatgpt.com/docs/build-skills)，Claude Code 参考[官方说明](https://code.claude.com/docs/en/skills)。
+如果之前安装过同名 Skill，先核对现有版本，避免重复安装或覆盖自己的修改。Codex 安装目录参考[官方说明](https://learn.chatgpt.com/docs/build-skills)，Claude Code 参考[官方说明](https://code.claude.com/docs/en/skills)，千问办公参考[官方 Skill 说明](https://docs.qwenwork.cn/features/skills)。
 
 ## 用法一：直接给视频
 
@@ -83,14 +84,18 @@ Agent 会整理并实际查看视频画面，必要时补采动作过程，然�
 使用 tennisprism 分析我打的网球，打开视频选择页面。
 ```
 
-1. Agent 启动本地页面，并打开或给出 `http://127.0.0.1:端口/start` 链接。
-2. 点击「选择视频」，等待预览就绪。默认近端球员；关注问题可以不填。
-3. 点击「开始分析」。页面整理真实画面，由当前对话中的 Agent 接续分析。
-4. 查看初步结论；需要时点击「生成完整视频复盘」，由 Agent 继续生成 H5。
+1. Agent 启动本地页面并保持当前任务运行，等待你提交视频。
+2. 页面显示「分析端已连接」后选择视频，等待预览就绪。默认近端球员；关注问题可以不填。
+3. 在网页点击「开始分析」。Agent 自动接收任务、实际看图并提交报告，**结果直接显示在网页，不需要回聊天发送“继续分析”**。
+4. 需要时在网页点击「生成完整视频复盘」。本机服务直接生成 H5，不再等待第二条聊天指令。已复核的姿态数据可显示骨架；没有则交付明确标注的无骨架版本。
 
-如果 Agent 已结束当前回复，回到同一个对话，粘贴网页上的「继续分析……」提示。网页不能自动唤醒一个已经结束的聊天；没有 Agent 接续时，它会明确显示等待状态。
+请保持宿主 Agent 的这次任务运行。网页入口依赖宿主支持连续的短等待与工具执行，**不是可以脱离 Agent 独立推理的常驻网站**。连接断开会显示真实状态，保留视频与任务，停止接受新提交；恢复后可继续。宿主若强制结束任务，Skill 不能自行唤醒它，不能承诺所有平台都已支持自动接续。
 
-完整报告按钮同样需要 Agent 接续。若提示等待，请在对话说「继续生成完整复盘页」。报告是本地文件，本机服务运行期间链接可用；关闭后可以让 Agent 重新打开。
+完成这一段后，H5 按钮与结果仍可使用；分析新视频需要再次启用 Skill。关闭本机服务后，可让 Agent 使用同一任务目录重新打开结果。
+
+### 从 1.0.0 更新
+
+重新从本仓库安装完整 Skill，保留你自己的本地定制与运行目录；不要只替换 `SKILL.md`。让 Agent 重新读取 1.0.1，并重新启动本地服务。旧版正在运行的进程不会随文件更新而自动升级。已有视频不需要删除：使用原来的 workspace 启动并等待，会接收未完成的任务。若其他安装工具提示覆盖，请先确认没有需要保留的自定义修改。
 
 ## 第一次试用建议
 
@@ -110,7 +115,7 @@ H5 中的骨架必须来自真实模型并经 Agent 视觉复核。安装失败�
 
 ## 兼容性与排错
 
-已完成 macOS / Python 3.12 / Codex 的真实视频分析与浏览器交互验证。Claude Code、WorkBuddy 等是标准 Skill 格式适配目标，**尚未完成各宿主的端到端验收**。普通只聊天、不能运行本地程序或看图片的界面无法完成这条工作流。
+已完成 macOS / Python 3.12 / Codex 的真实视频分析与浏览器交互验证。千问办公、Claude Code、WorkBuddy 等是标准 Skill 格式适配目标，**尚未完成各宿主的端到端验收**。普通只聊天、不能运行本地程序或看图片的界面无法完成这条工作流。
 
 视频打不开、页面一直等待、没有骨架、远程环境的本地链接打不开：见[常见问题](docs/troubleshooting.md)。欢迎通过 Issues 反馈宿主、系统、执行到哪一步和脱敏错误信息；不必公开私人视频。
 

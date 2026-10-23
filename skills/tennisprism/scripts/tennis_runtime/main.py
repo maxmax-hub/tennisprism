@@ -41,9 +41,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         yield
         executor.shutdown(wait=False, cancel_futures=True)
 
-    app = FastAPI(title="TennisAI", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="TennisPrism", version="1.0.1", lifespan=lifespan)
     app.state.store = store
     app.state.executor = executor
+    from .agent import attach as attach_agent
+    attach_agent(app, store)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
 
     @app.exception_handler(RequestValidationError)
@@ -109,7 +111,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             (folder / "prompt.txt").write_text(prompt, encoding="utf-8")
             store.update("runs", identifier, manifest=manifest, window=manifest["window"])
             if mode == "prepare":
-                store.update("runs", identifier, status="awaiting_report", progress=100, message="证据包已就绪，可交给当前 Agent 对话分析，再导入报告")
+                store.update("runs", identifier, status="awaiting_report", progress=45, message="动作画面已就绪，等待分析端接收")
                 return
             raise ValueError("Analysis is performed by the current host Agent; use prepare mode")
         except Exception as exc:
@@ -122,7 +124,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     @app.get("/api/bootstrap")
     def bootstrap():
-        return {"version": "0.1.0", "csrf_token": csrf_token, "providers": [{"kind":"agent","label":"当前 Agent","available":True,"message":"通过当前对话分析"}], "videos": [public_video(v) for v in store.list("videos")]}
+        return {"version": "1.0.1", "csrf_token": csrf_token, "providers": [{"kind":"agent","label":"当前 Agent","available":True,"message":"通过当前对话分析"}], "videos": [public_video(v) for v in store.list("videos")]}
 
     @app.get("/api/videos")
     def list_videos():
@@ -130,6 +132,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     @app.post("/api/videos", status_code=202)
     async def upload_video(request: Request, filename: str):
+        app.state.agent.require_listener()
         filename = filename.replace("\\", "/").split("/")[-1].strip()
         suffix = Path(filename).suffix.lower()
         if not filename or len(filename) > 255 or suffix not in UPLOAD_EXTENSIONS:
@@ -184,7 +187,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             raise HTTPException(404, "缩略图尚未就绪")
         return FileResponse(path, media_type="image/jpeg")
 
-    @app.post("/api/videos/{identifier}/runs", status_code=202)
     def create_run(identifier: str, payload: RunRequest):
         video = get("videos", identifier)
         if video["status"] != "ready":
@@ -201,6 +203,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         record = store.create("runs", {"video_id": identifier, "status": "queued", "progress": 0, "message": "等待准备视频证据", "error": None, "provider": payload.provider.public(), "target": payload.target.model_dump(), "focus": payload.focus, "window": {"start": payload.start, "end": min(end, duration)}, "focus_times": payload.focus_times, "manifest": None, "report": None, "provenance": None})
         executor.submit(run_analysis, record["id"], payload.provider.runtime(), payload.mode)
         return record
+
+    @app.post("/api/videos/{identifier}/runs", status_code=202)
+    def submit_web_run(identifier: str, payload: RunRequest):
+        app.state.agent.require_listener()
+        return create_run(identifier, payload)
 
     @app.get("/api/videos/{identifier}/runs")
     def video_runs(identifier: str):
@@ -229,6 +236,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     @app.post("/api/runs/{identifier}/report")
     async def import_report(identifier: str, request: Request):
         run = get("runs", identifier)
+        if run.get('superseded_by'):
+            raise HTTPException(409, '该任务已有补采样任务，请提交到最新任务以保留正确证据')
         if not run.get("manifest") or run["status"] in {"queued", "preparing", "analyzing"}:
             raise HTTPException(409, "请等待证据准备完成再导入报告")
         if run["status"] == "completed":

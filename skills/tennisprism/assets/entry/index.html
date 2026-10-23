@@ -8,7 +8,7 @@
   <div class="workspace">
     <section class="intake-card" aria-label="提交网球视频">
       <div class="card-heading"><div><span class="step-label">01 / YOUR VIDEO</span><h2 id="card-title">从你的视频开始</h2></div><span class="local-badge"><i></i> 本机视频</span></div>
-      <div id="error" class="error" role="alert" hidden></div>
+      <div id="error" class="error" role="alert" hidden></div><p id="connection-message" class="capture-tip" role="status">正在连接分析端…</p>
       <div id="upload-area">
         <div class="dropzone" id="dropzone">
           <div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="8" y="10" width="32" height="28" rx="7"/><path d="M24 30V17m-5 5 5-5 5 5M14 34h20"/></svg></div>
@@ -38,7 +38,6 @@
       <section id="task-panel" class="task-panel" aria-live="polite" hidden>
         <div class="task-title"><span id="task-symbol" class="task-symbol">↗</span><div><span class="step-label">02 / REVIEW</span><h3 id="task-title">正在整理视频</h3></div></div><p id="task-message"></p>
         <ol class="task-steps"><li id="stage-video" class="done">视频已就绪</li><li id="stage-evidence">整理动作画面</li><li id="stage-analysis">Agent 分析与训练建议</li></ol>
-        <div id="handoff" hidden><p>回到刚才的对话，说一句：</p><div class="continue-row"><code id="continue-text"></code><button id="copy" class="text-button" type="button">复制</button></div><small>任务已经保存在本机，刷新页面也能继续。</small></div>
         <button id="retry" class="text-button" type="button" hidden>重新提交分析</button>
         <div id="report-summary" hidden></div><button id="another" class="text-button" type="button">另选一段视频</button>
       </section>
@@ -47,7 +46,7 @@
     <aside class="expectations">
       <div class="court-card"><div class="court-kicker">LESS GUESSING. MORE PRACTICE.</div><svg viewBox="0 0 360 250" role="img" aria-label="默认观察近端球员的球场示意"><defs><linearGradient id="court-fill" x2="0" y2="1"><stop stop-color="#39604b"/><stop offset="1" stop-color="#244736"/></linearGradient></defs><path fill="url(#court-fill)" stroke="#b6c6aa" stroke-width="1.2" d="M95 31h170l65 194H30Z"/><g fill="none" stroke="#acbea0" stroke-width="1"><path d="m114 31-49 194m181-194 49 194M180 58v116M86 58h188M48 174h264M62 128h236"/><path stroke="#e2e8d5" stroke-width="2" d="M48 127h264"/></g><path d="M180 196Q134 115 206 67" fill="none" stroke="#c5d78f" stroke-width="1.2" stroke-dasharray="4 5" opacity=".65"/><circle cx="206" cy="67" r="5" fill="#99af93"/><ellipse cx="174" cy="214" rx="27" ry="8" fill="#c4df8440"/><circle cx="174" cy="205" r="11" fill="#d6ed8b"/><circle cx="174" cy="205" r="19" fill="none" stroke="#d6ed8b" stroke-opacity=".4"/><path d="m199 202 22-18h66" fill="none" stroke="#d6ed8b" stroke-width=".8"/><text x="226" y="177" fill="#e1ebc9" font-size="11">默认分析你</text></svg><p>镜头近处，是这次复盘的主角。</p></div>
       <div class="outcomes" id="what-you-get"><span class="step-label">WHAT YOU TAKE TO COURT</span><h2>带走的不只是一个分数</h2><div class="outcome"><span>01</span><div><h3>看清现在的水平</h3><p>结合真实画面给出初步判断，说明判断有多确定。</p></div></div><div class="outcome"><span>02</span><div><h3>找到值得留意的问题</h3><p>分清看见的动作与待验证的原因，回到视频核对。</p></div></div><div class="outcome"><span>03</span><div><h3>知道下一次怎么练</h3><p>给出专项练习、做法和验证方式，让建议落到场上。</p></div></div></div>
-      <div class="report-note"><span>＋</span><p>先在对话里看初步结论。想看得更细，再生成带视频、动作骨架与证据的完整报告。</p></div>
+      <div class="report-note"><span>＋</span><p>初步结论与训练建议直接显示在此页。想看得更细，再生成带视频和逐帧回看的完整报告；骨架仅在姿态数据已复核时显示。</p></div>
     </aside>
   </div>
   <footer><span>TennisPrism · 复盘 / 训练 / 再验证</span><span>当前 Agent 分析 · 原视频保留在本机</span></footer>
