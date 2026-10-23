@@ -2,6 +2,8 @@
 
 **看清这一拍，知道下一次怎么练。**
 
+[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.0.0 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.0.0) · [验证记录](STATUS.md)
+
 免费、MIT 开源的 Agent Skill。把网球视频交给你正在使用的 AI Agent，得到有画面依据的水平判断、动作复盘和具体训练建议；想看得更细，再生成带视频、逐帧回看和可选人体骨架的本地 H5 报告。
 
 默认分析**离镜头最近的球员**。只有你主动指定时，才分析远端或其他人。
@@ -41,7 +43,7 @@ npx skills add maxmax-hub/tennisprism --skill tennisprism -a claude-code -g
 
 ### 不使用 Node.js：手动安装
 
-下载本仓库，复制完整的 `skills/tennisprism` 文件夹，而不是只复制 `SKILL.md`：
+下载 [v1.0.0 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.0.0/tennisprism-1.0.0.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
 
 | 宿主 | 个人 Skill 目录 |
 |---|---|
