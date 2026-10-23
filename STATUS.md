@@ -1,5 +1,12 @@
 # Release status
 
+## 1.0.2 · Conclusions and H5 together · 2026-10-24
+
+- Direct chat attachments and readable video paths now default to one delivery: actual evidence review, validated report, H5 generation, working-link check, then concise conclusions/practice and the report link together. No second confirmation or diagnostic pass. Explicit text-only requests skip H5.
+- Missing or unreliable optional pose data does not block the video/coaching report. Only real, reviewed pose may appear. Direct input is no longer instructed to use web-listener heartbeat commands. Web intake retains the 1.0.1 active-host flow and local H5 button.
+- Scope is Skill orchestration, references, UI metadata, installation/use documentation and the runtime version label; media processing, report validation and H5 generation code are unchanged. Official Skill validation, Python parsing, local reference checks, UI metadata validation and canonical/public resource comparison passed. Existing 1.0.1 runtime and real-media/browser evidence remains applicable; this patch is not a new independent model/host video-analysis trial.
+- Compatibility limits remain: QwenWork/千问办公 and other untested hosts are not claimed end-to-end verified. No user media, reports or model weights are distributed.
+
 ## 1.0.1 · Web continuation repair · 2026-10-24
 
 - Root cause: 1.0.0 allowed the host Agent to finish after opening the upload page. The server prepared media but never invoked a model, leaving the user to send another chat message. This was a workflow gap, not an upload failure.

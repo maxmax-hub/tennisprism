@@ -15,6 +15,8 @@
 
 本地程序不内置远程 AI 调用。当前宿主 Agent 必须实际查看抽样图片并形成结论。报告 schema 3.0 绑定本次 evidence_id、真实帧 ID 与时间，区分 observed / potential / development 三类训练重点。格式校验不能证明教练结论正确。
 
+对话附件或路径流程由 Skill 连续执行 prepare → 看图/必要时补采样 → submit → h5 → 检查报告链接，最终同时返回结论与 H5；仅明确只要文字时跳过 H5。submit 本身仍只负责报告校验与保存，不自动开启第二轮模型分析。直接附件无需 wait / heartbeat / disconnect，serve 仅用于本机报告展示。
+
 ## 网页任务连接
 
 网页不直接调用模型。`coach.py wait` 通过本机 HTTP 长轮询接收一条真实任务，宿主在当前执行中连续等待；45 秒未继续等待则连接过期。接收任务后每约 60 秒执行 heartbeat，180 秒未续期在页面显示中断。浏览器轮询不续期，完成或取消后 disconnect。没有后台假在线循环，也没有结束聊天的通用唤醒器。

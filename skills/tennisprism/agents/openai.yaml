@@ -1,4 +1,4 @@
 interface:
   display_name: "TennisPrism · 网球复盘教练"
-  short_description: "分析网球视频，给出水平判断、动作复盘与可验证的训练建议，按需生成交互报告。"
+  short_description: "分析网球视频，一次交付水平判断、具体训练建议和可逐帧回看的 H5 报告。"
   default_prompt: "使用 $tennisprism 分析我的网球视频，默认看近端球员，重点告诉我下一次怎么练。"

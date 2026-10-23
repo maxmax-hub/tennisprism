@@ -2,20 +2,20 @@
 
 **看清这一拍，知道下一次怎么练。**
 
-[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.0.1 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.0.1) · [验证记录](STATUS.md)
+[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.0.2 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.0.2) · [验证记录](STATUS.md)
 
-免费、MIT 开源的 Agent Skill。把网球视频交给你正在使用的 AI Agent，得到有画面依据的水平判断、动作复盘和具体训练建议；想看得更细，再生成带视频、逐帧回看和可选人体骨架的本地 H5 报告。
+免费、MIT 开源的 Agent Skill。把网球视频交给你正在使用的 AI Agent，一次得到有画面依据的水平判断、具体训练建议，以及带视频、逐帧回看和可选人体骨架的本地 H5 报告。
 
 默认分析**离镜头最近的球员**。只有你主动指定时，才分析远端或其他人。
 
-English: an open-source tennis video review Skill for your existing coding agent. It combines timestamped evidence, a provisional level estimate, actionable practice and an optional local HTML report. The current interface and coaching instructions are primarily Chinese.
+English: an open-source tennis video review Skill for your existing coding agent. Send a video in chat to receive timestamped evidence, a provisional level estimate, actionable practice and a local HTML report together. The current interface and coaching instructions are primarily Chinese.
 
 ## 你会得到什么
 
 - **初步判断**：NTRP 尺度的视频估计、独立置信度、已具备的能力和最值得练的 1–3 项。
 - **具体练法**：准备条件、步骤、建议时长、动作提示、难度调整，以及练完记录什么。
 - **潜在问题也有行动建议**：分清直接观察与原因推测，提供对照试练，说明什么结果支持调整、什么结果应保留原动作。
-- **按需 H5**：本地视频播放、证据跳转、逐帧与慢放；成功运行并复核姿态模型时，增加真实骨架与人物跟随放大。
+- **H5 复盘报告**：对话发视频后默认生成，包含本地视频播放、证据跳转、逐帧与慢放；成功运行并复核姿态模型时，增加真实骨架与人物跟随放大。
 
 ## 安装
 
@@ -43,7 +43,7 @@ npx skills add maxmax-hub/tennisprism --skill tennisprism -a claude-code -g
 
 ### 不使用 Node.js：手动安装
 
-下载 [v1.0.1 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.0.1/tennisprism-1.0.1.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
+下载 [v1.0.2 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.0.2/tennisprism-1.0.2.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
 
 | 宿主 | 个人 Skill 目录 |
 |---|---|
@@ -68,13 +68,9 @@ Codex 可使用 `$tennisprism`；Claude Code 可使用 `/tennisprism`。例如�
 $tennisprism 分析 /绝对路径/我的网球视频.mp4，重点看反手高球和脚步。
 ```
 
-Agent 会整理并实际查看视频画面，必要时补采动作过程，然后给出初步结论和具体练习。**不用先回答“分析哪一个人”**。想看远端球员时主动说明即可。
+Agent 会整理并实际查看视频画面，必要时补采动作过程，保存报告并自动生成 H5，**在同一次回复中给出简短结论、具体练习和可打开的报告链接**。不用再说“生成完整复盘页”，也不用先回答“分析哪一个人”。想看远端球员时主动说明即可。
 
-收到初步结论后，如果想进一步回看，再说：
-
-```text
-生成完整视频复盘页，附上视频、动作证据、训练建议和可用的骨架。
-```
+只想看文字时加一句「只要文字，不生成网页」。骨架不可用时仍会生成视频与训练报告，并注明缺少骨架；不会让可选模型阻塞整份报告。H5 链接在本机服务运行期间有效，关闭后可让 Agent 重新打开。
 
 ## 用法二：让 Agent 打开视频选择页
 
@@ -93,9 +89,9 @@ Agent 会整理并实际查看视频画面，必要时补采动作过程，然�
 
 完成这一段后，H5 按钮与结果仍可使用；分析新视频需要再次启用 Skill。关闭本机服务后，可让 Agent 使用同一任务目录重新打开结果。
 
-### 从 1.0.0 更新
+### 从旧版本更新
 
-重新从本仓库安装完整 Skill，保留你自己的本地定制与运行目录；不要只替换 `SKILL.md`。让 Agent 重新读取 1.0.1，并重新启动本地服务。旧版正在运行的进程不会随文件更新而自动升级。已有视频不需要删除：使用原来的 workspace 启动并等待，会接收未完成的任务。若其他安装工具提示覆盖，请先确认没有需要保留的自定义修改。
+重新从本仓库安装完整 Skill，保留你自己的本地定制与运行目录；不要只替换 `SKILL.md`。让 Agent 重新读取 1.0.2（可打开新对话），并重新启动本地服务。旧版正在运行的进程不会随文件更新而自动升级。1.0.2 将直接发视频改为结论与 H5 一次交付；1.0.1 的网页自动接收流程保留。已有视频不需要删除：网页流程可使用原来的 workspace 启动并等待，接收未完成的任务。若安装工具提示覆盖，请先确认没有需要保留的自定义修改。
 
 ## 第一次试用建议
 
