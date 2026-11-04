@@ -19,5 +19,80 @@ R.priorities.forEach((p,i)=>{const d=p.drill,card=node('article',undefined,'dril
 if(!R.priorities.length)$('drills').append(node('p','当前画面没有支持具体专项的充分依据，先保留已有动作。'));
 for(const finding of R.strengths.concat(R.priorities)){const row=node('div',undefined,'evidence-row');row.append(node('h4',finding.title),node('p','观察：'+finding.observation),node('p','判断：'+finding.interpretation));finding.evidence.forEach(ref=>row.append(node('p',ref.frame_id+' · '+time(ref.timestamp)+' · '+ref.description,'small-note')));$('evidence-list').append(row);}
 function step(delta){loop=false;const i=pending===null?nearest(v.currentTime):pending;seek(stamps[Math.max(0,Math.min(stamps.length-1,i+delta))]);}
+function showShotData(){
+  const data=D.shots;if(!data||!Array.isArray(data.shots)||!data.summary)return;
+  const shots=data.shots,summary=data.summary;
+  const labels={
+    stroke:{forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',overhead:'高压',unknown:'动作未判定'},
+    contact_height:{below_hip:'髋部以下',hip_to_shoulder:'髋部至肩部',above_shoulder:'肩部以上',unknown:'高度未判定'},
+    incoming_depth:{short:'浅来球',mid:'中等深度来球',deep:'深来球',unknown:'来球深度未判定'},
+    outgoing_depth:{short:'回球浅区',mid:'回球中区',deep:'回球深区',unknown:'回球深度未判定'},
+    split_step:{observed:'看到分腿垫步',not_observed:'完整窗口内未见',unknown:'分腿垫步未判定'}
+  };
+  const titles={contact_height:'击球高度',incoming_depth:'来球深度',outgoing_depth:'回球深度',split_step:'分腿垫步'};
+  const metricKeys=['preparation_to_contact_s','contact_to_recovery_s','wrist_height_torso_2d','stance_shoulder_ratio_2d','elbow_angle_2d_deg'];
+  const metricNames={preparation_to_contact_s:'准备至触球',contact_to_recovery_s:'触球至回位',wrist_height_torso_2d:'手腕高度 / 躯干垂直跨度（2D）',stance_shoulder_ratio_2d:'脚踝间距 / 肩宽（2D）',elbow_angle_2d_deg:'肘部投影角（2D）'};
+  const displayValue=(key,value)=>Number.isFinite(value)?(key==='elbow_angle_2d_deg'?value.toFixed(1)+'°':value.toFixed(2)+(key.endsWith('_s')?' 秒':'')):'未计算';
+  const known=(field,value)=>labels[field][value]||labels[field].unknown;
+  $('shot-analysis').hidden=false;
+  $('shot-scope').textContent='共记录 '+summary.shot_count+' 个抽样击球；以下统计只覆盖这些记录，不代表整场。击球高度按身体部位分档。';
+  for(const [value,label] of Object.entries(labels.stroke)){
+    const count=summary.stroke_counts[value];if(count>0)$('stroke-counts').append(node('span',label+' '+count,'stroke-count'));
+  }
+  for(const [field,title] of Object.entries(titles)){
+    const stat=summary[field];if(!stat)continue;
+    const card=node('article',undefined,'shot-distribution');
+    card.append(node('h3',title),node('p','可判定 '+stat.valid+' / '+stat.total+' 拍','sample-count'));
+    if(!stat.valid)card.append(node('p','暂无可判定样本','metric-empty'));
+    else for(const [value,label] of Object.entries(labels[field])){
+      const count=stat.counts[value];if(value==='unknown'||!count)continue;
+      const row=node('div',undefined,'distribution-row'),bar=node('div',undefined,'distribution-bar'),fill=node('span');
+      fill.style.width=(100*count/stat.valid)+'%';bar.setAttribute('aria-hidden','true');bar.append(fill);
+      row.append(node('span',label),node('strong',count+' 拍'),bar);card.append(row);
+    }
+    $('shot-distributions').append(card);
+    $('shot-methods').append(node('p',title+'：可判定 '+stat.valid+' / '+stat.total+' 拍；推测 '+stat.estimated+' 拍，未判定 '+stat.unknown+' 拍。推测与未判定不计入可判定分布。'));
+  }
+  for(const key of metricKeys){
+    const stat=(summary.metrics||{})[key],definition=(data.metric_definitions||{})[key];
+    if(stat&&stat.valid>0&&Number.isFinite(stat.median)){
+      const card=node('article',undefined,'shot-metric');card.append(node('h4',metricNames[key]),node('strong',displayValue(key,stat.median)),node('p','有效 '+stat.valid+' / '+stat.total+' 拍','sample-count'));
+      if(stat.valid>1)card.append(node('small','范围 '+displayValue(key,stat.min)+' — '+displayValue(key,stat.max)));
+      $('shot-metric-cards').append(card);$('shot-measurements').hidden=false;
+    }
+    if(definition)$('shot-methods').append(node('p',metricNames[key]+'：'+definition.description+(stat?' 有效 '+stat.valid+' / '+stat.total+' 拍，未计算 '+stat.unknown+' 拍。':'')));
+  }
+  (data.notes||[]).forEach(note=>$('shot-methods').append(node('p',note)));
+  const filters={stroke:'all',incoming_depth:'all',outgoing_depth:'all'};
+  for(const [field,label] of [['stroke','动作'],['incoming_depth','来球'],['outgoing_depth','回球']]){
+    const wrapper=node('label',label),select=node('select');select.setAttribute('aria-label','筛选逐拍记录：'+label);select.dataset.shotFilter=field;
+    const all=node('option','全部');all.value='all';select.append(all);
+    for(const [value,text] of Object.entries(labels[field]))if(shots.some(shot=>shot[field]===value)){const option=node('option',text);option.value=value;select.append(option);}
+    select.addEventListener('change',()=>{filters[field]=select.value;renderRecords();});wrapper.append(select);$('shot-filters').append(wrapper);
+  }
+  function renderRecords(){
+    const visible=shots.filter(shot=>Object.entries(filters).every(([field,value])=>value==='all'||shot[field]===value));
+    $('shot-filter-count').textContent='显示 '+visible.length+' / '+shots.length+' 条记录 · 筛选仅影响下方回看列表。';$('shot-list').replaceChildren();
+    if(!visible.length){$('shot-list').append(node('p','没有同时符合这些条件的已记录击球。','metric-empty'));return;}
+    for(const shot of visible){
+      const row=node('article',undefined,'shot-record'),heading=node('div',undefined,'shot-record-heading'),button=node('button','↗ '+time(shot.time),'text-button');
+      button.setAttribute('aria-label','回看 '+known('stroke',shot.stroke)+' '+time(shot.time));
+      button.addEventListener('click',()=>{choose({id:'shot-'+shot.id,time:shot.time,frame_id:shot.phases.contact||shot.evidence[0].frame_id,title:known('stroke',shot.stroke),observation:shot.note},true);$('loop').disabled=false;});
+      heading.append(node('strong',known('stroke',shot.stroke)),button);
+      const height=known('contact_height',shot.contact_height)+(shot.contact_basis==='estimated'&&shot.contact_height!=='unknown'?'（推测）':'');
+      row.append(heading,node('p',[height,known('incoming_depth',shot.incoming_depth),known('outgoing_depth',shot.outgoing_depth)].join(' · '),'shot-record-context'),node('p',shot.note));
+      const details=node('details',undefined,'shot-record-details');details.append(node('summary','查看依据与单拍数据'));
+      details.append(node('p','判断置信度：'+confidence[shot.confidence]+' · '+({visible:'触球可见',estimated:'触球为推测时刻',unknown:'触球未确认'}[shot.contact_basis])+' · '+known('split_step',shot.split_step)));
+      const metrics=node('dl',undefined,'shot-values');
+      for(const key of metricKeys)if(Number.isFinite((shot.metrics||{})[key]))metrics.append(node('dt',metricNames[key]),node('dd',displayValue(key,shot.metrics[key])));
+      if(metrics.children.length)details.append(metrics);
+      else details.append(node('p','本拍没有满足计算条件的数值。','small-note'));
+      shot.evidence.forEach(ref=>{const evidenceButton=node('button',ref.frame_id+' · '+time(ref.timestamp)+' · '+ref.description,'shot-evidence-link');evidenceButton.addEventListener('click',()=>{choose({id:'shot-ref',time:ref.timestamp,frame_id:ref.frame_id,title:known('stroke',shot.stroke)+' · 画面依据',observation:ref.description},true);$('loop').disabled=false;});details.append(evidenceButton);});
+      row.append(details);$('shot-list').append(row);
+    }
+  }
+  renderRecords();
+}
+showShotData();
 $('prev').addEventListener('click',()=>step(-1));$('next').addEventListener('click',()=>step(1));$('speed').addEventListener('change',e=>v.playbackRate=Number(e.target.value));$('loop').disabled=!selected;$('loop').addEventListener('click',()=>{loop=!loop;$('loop').textContent=loop?'停止循环':'循环看这一段';if(loop){seek(Math.max(0,selected.time-1.3));v.play().catch(()=>{});}else v.pause();});v.addEventListener('seeked',()=>{pending=null;render(v.currentTime);});v.addEventListener('loadeddata',()=>selected?choose(selected):render(0));v.addEventListener('timeupdate',()=>{if(!v.requestVideoFrameCallback)render(v.currentTime);});if(v.requestVideoFrameCallback){const cb=(_,m)=>{render(m.mediaTime);v.requestVideoFrameCallback(cb);};v.requestVideoFrameCallback(cb);}if(v.readyState>=2){if(selected)choose(selected);else render(0);}render(0);
 })();

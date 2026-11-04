@@ -38,6 +38,9 @@ def build(store,run):
             pts=row.get('landmarks')
             if pts is not None and (len(pts)!=33 or any(len(p)!=4 or not all(math.isfinite(x) for x in p) for p in pts)):
                 raise ValueError('Invalid pose landmark data')
+    from .shot_store import observations_for,compute
+    shot_observations=observations_for(store,run)
+    shot_metrics=compute(store,run,shot_observations,pose=pose if pose.get('reviewed') else None) if shot_observations is not None else None
     build_id=uuid.uuid4().hex[:12];out=folder/'h5'/build_id;out.mkdir(parents=True)
     for name in ['index.html','style.css','app.js']:shutil.copy2(SKILL/'assets/report'/name,out/name)
     (out/'evidence').mkdir();shutil.copy2(preview,out/'preview.mp4')
@@ -49,10 +52,15 @@ def build(store,run):
             actual=lookup[ref['frame_id']];shutil.copy2(folder/'evidence'/actual['file'],out/'evidence'/actual['file'])
         events.append({'id':str(i),'time':e['timestamp'],'frame_id':e['frame_id'],'image':'evidence/'+frame['file'],'title':finding['title'],'observation':finding['observation'],'interpretation':finding['interpretation'],'kind':finding.get('kind','strength'),'confidence':finding['confidence']})
     data={'report':report,'events':events,'evidence':{k:{**f,'image':'evidence/'+f['file']} for k,f in lookup.items()},'timestamps':stamps,'video':{'filename':video['filename'],'duration':video['metadata']['duration'],'width':width,'height':height},'pose':pose,'provenance':run.get('provenance',{})}
+    if shot_metrics is not None:
+        data['shots']=shot_metrics
+        (out/'shots.json').write_text(json.dumps(shot_metrics,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
     (out/'data.js').write_text('window.TENNIS_REPORT='+json.dumps(data,ensure_ascii=False).replace('<','\\u003c').replace('\u2028','\\u2028').replace('\u2029','\\u2029')+';\n',encoding='utf-8')
     (out/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     files=[p.relative_to(out).as_posix() for p in out.rglob('*') if p.is_file()]
     url=f"/reports/{run['id']}/{build_id}/index.html"
+    if store.get('runs',run['id']).get('shots_id') != run.get('shots_id'):
+        raise ValueError('Shot observations changed during this build; generate H5 again')
     store.update('runs',run['id'],h5_build=build_id,h5_files=files,h5_url=url,detail_requested=False)
     base=json.loads((store.root/'server.json').read_text()).get('url','') if (store.root/'server.json').exists() else ''
     return {'directory':str(out),'url':base+url if base else None,'start_server_if_url_missing':not bool(base),'private_media_included':True,'pose_reviewed':bool(pose.get('reviewed'))}

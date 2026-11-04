@@ -34,8 +34,12 @@ def main():
     model=Path(args.model).expanduser().resolve(strict=True)
     options=vision.PoseLandmarkerOptions(base_options=python.BaseOptions(model_asset_path=str(model),delegate=python.BaseOptions.Delegate.CPU),running_mode=vision.RunningMode.VIDEO,num_poses=1,min_pose_detection_confidence=.5,min_pose_presence_confidence=.5,min_tracking_confidence=.5)
     anchors=[e['timestamp'] for group in ('strengths','priorities') for f in (r.get('report') or {}).get(group,[]) for e in f['evidence']]
+    from tennis_runtime.shot_store import observations_for
+    shot_observations=observations_for(store,r)
+    if shot_observations:
+        anchors += [e['timestamp'] for shot in shot_observations['shots'] for e in shot['evidence']]
     duration=v['metadata']['duration'];windows=[(0,duration)] if duration<=120 else [(max(0,t-2),min(duration,t+2)) for t in anchors]
-    if not windows:raise ValueError('Long videos require a completed report with evidence windows before pose inference')
+    if not windows:raise ValueError('Long videos require reviewed shot observations or a completed report with evidence windows before pose inference')
     unique_anchors=sorted(set(anchors))
     chosen=[unique_anchors[round(i*(len(unique_anchors)-1)/3)] for i in range(4)] if len(unique_anchors)>4 else unique_anchors
     review_times=sorted(set([0,*chosen,max(0,duration-.1)])) if duration<=120 and chosen else ([max(0,duration-.1)*i/5 for i in range(6)] if duration<=120 else chosen)

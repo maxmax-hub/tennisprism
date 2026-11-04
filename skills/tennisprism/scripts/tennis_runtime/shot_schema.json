@@ -1,0 +1,243 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "enum": [
+        "1.0"
+      ]
+    },
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "enum": [
+            "near",
+            "far",
+            "description"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "position",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "enum": [
+        "sampled"
+      ]
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "stroke": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "forehand",
+              "backhand",
+              "serve",
+              "volley",
+              "overhead",
+              "unknown"
+            ]
+          },
+          "incoming_depth": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "short",
+              "mid",
+              "deep",
+              "unknown"
+            ]
+          },
+          "outgoing_depth": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "short",
+              "mid",
+              "deep",
+              "unknown"
+            ]
+          },
+          "contact_height": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "below_hip",
+              "hip_to_shoulder",
+              "above_shoulder",
+              "unknown"
+            ]
+          },
+          "split_step": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "observed",
+              "not_observed",
+              "unknown"
+            ]
+          },
+          "contact_basis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "visible",
+              "estimated",
+              "unknown"
+            ]
+          },
+          "hitting_side": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "left",
+              "right",
+              "unknown"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "frame_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                },
+                "timestamp": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
+              },
+              "required": [
+                "frame_id",
+                "timestamp",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "phases": {
+            "type": "object",
+            "properties": {
+              "preparation": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 4000
+              },
+              "contact": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 4000
+              },
+              "recovery": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 4000
+              }
+            },
+            "required": [
+              "preparation",
+              "contact",
+              "recovery"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "stroke",
+          "incoming_depth",
+          "outgoing_depth",
+          "contact_height",
+          "split_step",
+          "contact_basis",
+          "hitting_side",
+          "confidence",
+          "note",
+          "evidence",
+          "phases"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10000
+    }
+  },
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "target",
+    "coverage",
+    "shots"
+  ],
+  "additionalProperties": false
+}

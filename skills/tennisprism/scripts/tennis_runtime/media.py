@@ -249,16 +249,18 @@ def _finite_number(value, label: str) -> float:
     return result
 
 
-def _sampling_groups(start: float, end: float, fps: float, focus_times: list[float]) -> list[tuple[str, list[float]]]:
+def _sampling_groups(start: float, end: float, fps: float, focus_times: list[float], detail_fps: int = 8) -> list[tuple[str, list[float]]]:
     span = end - start
     last = max(start, end - min(0.5 / fps, span / 2))
     count = min(MAX_OVERVIEW_FRAMES, max(2, math.ceil(span * 2)))
     groups = [("overview", [start + (last - start) * i / (count - 1) for i in range(count)])]
     centers = focus_times or [start + span * fraction / (MAX_SEQUENCES + 1) for fraction in range(1, MAX_SEQUENCES + 1)]
     duration = min((SEQUENCE_FRAMES - 1) / SEQUENCE_FPS, last - start)
+    rate = min(detail_fps, fps)
+    frame_count = max(2, math.floor(duration * rate) + 1)
     for index, center in enumerate(centers):
         burst_start = min(max(center - duration / 2, start), last - duration)
-        groups.append((f"sequence_{index + 1}", [burst_start + duration * i / (SEQUENCE_FRAMES - 1) for i in range(SEQUENCE_FRAMES)]))
+        groups.append((f"sequence_{index + 1}", [burst_start + duration * i / (frame_count - 1) for i in range(frame_count)]))
     return groups
 
 
@@ -269,9 +271,12 @@ def prepare_evidence(
     end: float | None = None,
     focus_times: list[float] | None = None,
     progress: Progress | None = None,
+    detail_fps: int = 8,
 ) -> dict:
     """Sample an explicit video window and write a reproducible evidence manifest."""
     source = _source(source)
+    if isinstance(detail_fps, bool) or detail_fps not in (8, 15, 30):
+        raise MediaError('局部时序采样只能选择 8、15 或 30 fps。')
     metadata = probe_video(source)
     start = _finite_number(start, "开始时间")
     end = metadata["duration"] if end is None else _finite_number(end, "结束时间")
@@ -283,7 +288,9 @@ def prepare_evidence(
     focus_times = [_finite_number(value, "重点观察时间") for value in focus_times]
     if any(value < start or value > end for value in focus_times):
         raise MediaError("重点观察时间必须位于所选分析范围内。")
-    groups = _sampling_groups(start, end, metadata["fps"], focus_times)
+    groups = _sampling_groups(start, end, metadata["fps"], focus_times, detail_fps)
+    sequence_rate = min(detail_fps, metadata['fps'])
+    sequence_count = max(len(targets) for name, targets in groups if name != 'overview')
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     _output_file(output_dir, "manifest.json")
@@ -330,12 +337,12 @@ def prepare_evidence(
     _emit(progress, 85, "正在生成时间点索引图")
     sheets = []
     for group_name, selected_frames in group_frames.items():
-        title = "VIDEO OVERVIEW" if group_name == "overview" else f"TEMPORAL {group_name.upper()} | sampled at up to {SEQUENCE_FPS} fps"
+        title = "VIDEO OVERVIEW" if group_name == "overview" else f"TEMPORAL {group_name.upper()} | requested {sequence_rate:g} fps"
         sheets.append(_make_sheet(output_dir, f"{group_name}.jpg", selected_frames, title, columns=3 if group_name == "overview" else 4))
     warnings = [
         "这是一组稀疏概览帧与短时间序列，不是对所选范围内每一拍或整个视频的完整观察。",
         "连续序列由均匀位置或用户时间点选取，未检测击球、触球时刻或回合；可能包含休息、捡球或无效动作。",
-        "短序列最多每秒采样 8 帧，快速挥拍和触球细节可能遗漏；不能据此测量球速、转速、精确拍面或落点判罚。",
+        f"短序列请求约每秒 {sequence_rate:g} 帧；实际时间以解码帧为准。快速挥拍和触球细节仍可能遗漏，采样间隔不等于识别精度；不能据此测量球速、转速或作落点判罚。",
     ]
     if min(metadata["width"], metadata["height"]) < 720:
         warnings.append("视频分辨率偏低，人体、球拍和网球细节可能不足；细微动作判断应保留。")
@@ -351,11 +358,11 @@ def prepare_evidence(
         "video": {key: metadata[key] for key in ("duration", "width", "height", "fps")},
         "window": {"start": start, "end": end},
         "sampling": {
-            "description": f"最多 {MAX_OVERVIEW_FRAMES} 张均匀概览帧及 {MAX_SEQUENCES} 组短序列，每组最多 {SEQUENCE_FRAMES} 帧；时间来自解码帧 PTS 并以视频轨道起点归零。",
+            "description": f"最多 {MAX_OVERVIEW_FRAMES} 张均匀概览帧及 {MAX_SEQUENCES} 组短序列，每组最多 {sequence_count} 帧；时间来自解码帧 PTS 并以视频轨道起点归零。",
             "coverage_note": " ".join(warnings),
             "warnings": warnings,
             "method": "uniform_overview_and_temporal_bursts",
-            "sequence_fps": SEQUENCE_FPS,
+            "sequence_fps": sequence_rate,
             "focus_times": focus_times,
             "requested_frame_count": requests,
             "decoded_unique_frame_count": len(frames),

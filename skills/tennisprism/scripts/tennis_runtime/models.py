@@ -37,6 +37,7 @@ class RunRequest(StrictModel):
     start: float = Field(default=0, ge=0)
     end: float | None = Field(default=None, gt=0)
     focus_times: list[float] = Field(default_factory=list, max_length=4)
+    detail_fps: Literal[8, 15, 30] = 8
     mode: Literal["prepare"] = "prepare"
 
     @model_validator(mode="after")

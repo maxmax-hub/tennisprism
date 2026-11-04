@@ -41,7 +41,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         yield
         executor.shutdown(wait=False, cancel_futures=True)
 
-    app = FastAPI(title="TennisPrism", version="1.0.2", lifespan=lifespan)
+    app = FastAPI(title="TennisPrism", version="1.1.0", lifespan=lifespan)
     app.state.store = store
     app.state.executor = executor
     from .agent import attach as attach_agent
@@ -106,7 +106,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             video = store.get("videos", run["video_id"])
             folder = store.path("runs", identifier)
             evidence_dir = folder / "evidence"
-            manifest = media.prepare_evidence(source_path(video), evidence_dir, start=run["window"]["start"], end=run["window"]["end"], focus_times=run["focus_times"], progress=progress("runs", identifier, "preparing", scale=0.45))
+            manifest = media.prepare_evidence(source_path(video), evidence_dir, start=run["window"]["start"], end=run["window"]["end"], focus_times=run["focus_times"], detail_fps=run.get('detail_fps',8), progress=progress("runs", identifier, "preparing", scale=0.45))
             prompt = reporting.build_prompt(manifest, run["target"], run["focus"])
             (folder / "prompt.txt").write_text(prompt, encoding="utf-8")
             store.update("runs", identifier, manifest=manifest, window=manifest["window"])
@@ -124,7 +124,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     @app.get("/api/bootstrap")
     def bootstrap():
-        return {"version": "1.0.2", "csrf_token": csrf_token, "providers": [{"kind":"agent","label":"当前 Agent","available":True,"message":"通过当前对话分析"}], "videos": [public_video(v) for v in store.list("videos")]}
+        return {"version": "1.1.0", "csrf_token": csrf_token, "providers": [{"kind":"agent","label":"当前 Agent","available":True,"message":"通过当前对话分析"}], "videos": [public_video(v) for v in store.list("videos")]}
 
     @app.get("/api/videos")
     def list_videos():
@@ -200,7 +200,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         active = [r for r in store.list("runs") if r["status"] in {"queued", "preparing", "analyzing"}]
         if len(active) >= 4:
             raise HTTPException(429, "已有较多任务在运行，请稍后再试")
-        record = store.create("runs", {"video_id": identifier, "status": "queued", "progress": 0, "message": "等待准备视频证据", "error": None, "provider": payload.provider.public(), "target": payload.target.model_dump(), "focus": payload.focus, "window": {"start": payload.start, "end": min(end, duration)}, "focus_times": payload.focus_times, "manifest": None, "report": None, "provenance": None})
+        record = store.create("runs", {"video_id": identifier, "status": "queued", "progress": 0, "message": "等待准备视频证据", "error": None, "provider": payload.provider.public(), "target": payload.target.model_dump(), "focus": payload.focus, "window": {"start": payload.start, "end": min(end, duration)}, "focus_times": payload.focus_times, "detail_fps": payload.detail_fps, "manifest": None, "report": None, "provenance": None})
         executor.submit(run_analysis, record["id"], payload.provider.runtime(), payload.mode)
         return record
 

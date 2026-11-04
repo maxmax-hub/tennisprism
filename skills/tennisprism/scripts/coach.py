@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import socket
 import sys
+import uuid
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -42,7 +43,27 @@ def info(store,r):
             'report_markdown':str(folder/'report.md') if (folder/'report.md').exists() else None,
             'prompt':str(folder/'prompt.txt'),'schema':str(SKILL/'scripts/tennis_runtime/report_schema.json'),
             'sheets':[str(folder/'evidence'/s['file']) for s in (r.get('manifest') or {}).get('sheets',[])],
+            'shot_schema':str(SKILL/'scripts/tennis_runtime/shot_schema.json'),
+            'shot_data':str(folder/'shots'/r['shots_id']/'metrics.json') if r.get('shots_id') else None,
             'detail_requested':r.get('detail_requested',False),'h5_url':r.get('h5_url'),'error':r.get('error')}
+
+def save_shots(store, run, observations):
+    """Preserve reviewed annotations and deterministic metrics as a new revision."""
+    from tennis_runtime.shots import validate_observations
+    from tennis_runtime.shot_store import compute
+    if run['status'] not in {'awaiting_report','completed'} or run.get('superseded_by'):
+        raise ValueError('Only the current prepared run accepts shot observations')
+    if run.get('h5_status')=='building':
+        raise ValueError('Wait for the current H5 build before revising shot observations')
+    normalized=validate_observations(observations,run['manifest'],run['target'])
+    metrics=compute(store,run,normalized)
+    revision=uuid.uuid4().hex
+    folder=store.path('runs',run['id'])/'shots'/revision
+    folder.mkdir(parents=True)
+    for name,data in [('observations.json',normalized),('metrics.json',metrics)]:
+        with (folder/name).open('x',encoding='utf-8') as f:json.dump(data,f,ensure_ascii=False,indent=2,allow_nan=False)
+    store.update('runs',run['id'],shots_id=revision,h5_status=None,h5_url=None,detail_requested=False)
+    return {'revision':revision,'observations':str(folder/'observations.json'),'metrics':str(folder/'metrics.json'),'summary':metrics['summary'],'h5_rebuild_required':True}
 
 def prepare(args):
     from tennis_runtime.main import create_app
@@ -69,7 +90,7 @@ def prepare(args):
             args.focus=args.focus if args.focus is not None else (parent['focus'] if parent else '')
             args.start=args.start if args.start is not None else (parent['window']['start'] if parent else 0)
             args.end=args.end if args.end is not None else (parent['window']['end'] if parent else None)
-        payload=RunRequest(target={'position':args.target,'description':args.description},focus=args.focus,start=args.start,end=args.end,focus_times=args.focus_times,mode='prepare')
+        payload=RunRequest(target={'position':args.target,'description':args.description},focus=args.focus,start=args.start,end=args.end,focus_times=args.focus_times,detail_fps=getattr(args,'detail_fps',8),mode='prepare')
         r=app.state.create_run(v['id'],payload)
         app.state.executor.shutdown(wait=True)
         r=store.get('runs',r['id']);output({**info(store,r),'video_id':v['id']})
@@ -91,12 +112,14 @@ def main():
         else:
             group=p.add_mutually_exclusive_group(required=True);group.add_argument('--video-id');group.add_argument('--run')
         p.add_argument('--target',choices=['near','far','description'],default='near' if cmd=='prepare' else None);p.add_argument('--description',default='' if cmd=='prepare' else None);p.add_argument('--focus',default='' if cmd=='prepare' else None);p.add_argument('--start',type=float,default=0 if cmd=='prepare' else None);p.add_argument('--end',type=float);p.add_argument('--focus-times',type=float,nargs='*',default=[])
+        p.add_argument('--detail-fps',type=int,choices=[8,15,30],default=8)
     p=sub.add_parser('inspect');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
     p=sub.add_parser('wait');p.add_argument('--workspace',required=True);p.add_argument('--timeout',type=float,default=25);p.add_argument('--exclude',nargs='*',default=[])
     p=sub.add_parser('heartbeat');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
     p=sub.add_parser('disconnect');p.add_argument('--workspace',required=True)
     p=sub.add_parser('submit');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True);p.add_argument('--report',required=True)
     p=sub.add_parser('h5');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True)
+    p=sub.add_parser('shots');p.add_argument('--workspace',required=True);p.add_argument('--run',required=True);p.add_argument('--observations',required=True)
     args=parser.parse_args()
     if args.command=='doctor':
         names=['fastapi','uvicorn','av','PIL','imageio_ffmpeg','pydantic']
@@ -125,6 +148,8 @@ def main():
         output(result);return 0
     r=store.get('runs',args.run)
     if args.command=='inspect':output(info(store,r));return 0
+    if args.command=='shots':
+        output(save_shots(store,r,json.loads(Path(args.observations).read_text(encoding='utf-8'))));return 0
     if args.command=='submit':
         from tennis_runtime import reporting
         if r['status']!='awaiting_report' or r.get('superseded_by'):raise ValueError('Only the current prepared, uncompleted run accepts a report')

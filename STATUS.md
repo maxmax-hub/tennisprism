@@ -30,3 +30,12 @@
 - At publication, skills.sh showed Agent Trust Hub PASS and [Snyk WARN W011](https://skills.sh/maxmax-hub/tennisprism/tennisprism/security/snyk), flagging user-supplied focus/player descriptions as an indirect prompt-injection exposure. This is a third-party automated label; no claim of a clean security audit is made. The Skill remains subject to the host's instruction hierarchy and tool permissions.
 
 Stable workflow and interfaces: README.md and docs/development.md. Private validation media and logs are intentionally not published.
+
+
+## 2026-11-04 · 1.1.0 sampled shot metrics
+
+- Added versioned, evidence-bound shot observations and deterministic sample summaries: stroke, contact-height bins, distinct incoming/outgoing depth, split-step visibility, and conditional event intervals/2D pose proxies. Unknowns stay unknown; estimated contact is separated. No automatic full-match detection or physical-height claim.
+- H5 displays sample counts, valid denominators, record filters and timestamp seeking. It recalculates from reviewed observations and current approved pose instead of trusting cached aggregates. Older reports stay supported. Added optional targeted 15/30 fps sampling and an explicit data-only path; same-video coaching comparison remains an independent requested mode.
+- 92 focused behavioral/integration tests passed locally, covering provenance, missing/invalid data, projection bounds, preserved revisions, stale builds, H5 compatibility and actual source-frame sampling. JS syntax and Skill validation passed. Existing Starlette/httpx deprecation warning does not affect these checks.
+- An authorized local clip was visually reviewed, annotated, processed and opened in the browser. Checked real playback, filtering, timestamp seek, next-frame, half-speed, loaded images and console state. Reviewed pose was reused only after exact media/target checks; no new pose inference or accuracy benchmark was claimed. Independent skill forward-check led to clarified data-only routing and contact evidence rules. Other hosts remain unverified.
+- Public package: 34 source/resource files, no private media, model weights, reports or credentials.
