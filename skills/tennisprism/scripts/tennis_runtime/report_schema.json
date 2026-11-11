@@ -7,7 +7,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
-        "3.0"
+        "3.1"
       ]
     },
     "summary": {
@@ -261,6 +261,9 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "test_variable": {
+                "type": "string"
               }
             },
             "required": [
@@ -276,7 +279,8 @@
               "harder",
               "adaptation",
               "source_kind",
-              "sources"
+              "sources",
+              "test_variable"
             ],
             "additionalProperties": false
           },
@@ -290,6 +294,145 @@
           },
           "alternative": {
             "type": "string"
+          },
+          "selection": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "focus",
+                  "trial",
+                  "optional"
+                ]
+              },
+              "situation": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string",
+                "enum": [
+                  "single",
+                  "repeated",
+                  "unclear"
+                ]
+              },
+              "phase_status": {
+                "type": "string",
+                "enum": [
+                  "confirmed",
+                  "unclear"
+                ]
+              },
+              "why_this_player": {
+                "type": "string"
+              },
+              "comparison": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "matched",
+                      "context_only",
+                      "unavailable"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "frame_id": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "number"
+                        },
+                        "description": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "frame_id",
+                        "timestamp",
+                        "description"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "status",
+                  "note",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "outcome": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "observed",
+                      "unknown"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "frame_id": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "number"
+                        },
+                        "description": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "frame_id",
+                        "timestamp",
+                        "description"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "status",
+                  "note",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "preserve": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "situation",
+              "pattern",
+              "phase_status",
+              "why_this_player",
+              "comparison",
+              "outcome",
+              "preserve"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -300,7 +443,8 @@
           "evidence",
           "drill",
           "kind",
-          "alternative"
+          "alternative",
+          "selection"
         ],
         "additionalProperties": false
       },

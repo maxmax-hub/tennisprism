@@ -2,7 +2,8 @@
 (()=>{
 const D=window.TENNIS_REPORT,R=D.report,P=D.pose,$=id=>document.getElementById(id),v=$('video'),W=D.video.width,H=D.video.height,stamps=D.timestamps;
 const ctx=$('overlay').getContext('2d'),zc=$('zoom-canvas'),zx=zc.getContext('2d');$('overlay').width=W;$('overlay').height=H;document.querySelector('.video-stage').style.aspectRatio=W+'/'+H;
-let selected=D.events[0]||null,loop=false,pending=null;const confidence={low:'低',medium:'中',high:'高'},kind={observed:'观察到的改善重点',potential:'潜在问题 · 建议试练',development:'提升型练习'};
+let selected=D.events[0]||null,loop=false,pending=null;const confidence={low:'低',medium:'中',high:'高'},kind={observed:'本次重点',potential:'先验证',development:'可选拓展'},roles={focus:'本次重点',trial:'先验证',optional:'可选拓展'};
+const roleOf=p=>p.selection?.role||({observed:'focus',potential:'trial',development:'optional'}[p.kind]);
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
 function time(t){return String(Math.floor(t/60)).padStart(2,'0')+':'+(t%60).toFixed(3).padStart(6,'0');}
 function nearest(t){let l=0,r=stamps.length-1;while(l<r){const m=(l+r)>>1;if(stamps[m]<t)l=m+1;else r=m;}return l&&Math.abs(stamps[l-1]-t)<Math.abs(stamps[l]-t)?l-1:l;}
@@ -14,10 +15,48 @@ function draw(context,pts,tx=0,ty=0,s=1){context.save();context.lineWidth=2.5;co
 function render(t){const i=nearest(t),row=P.frames[i],pts=row&&Math.abs(row.time-t)<.075?row.landmarks:null;$('clock').textContent=time(Math.min(t,D.video.duration));$('frame-label').textContent='预览第 '+(i+1)+' / '+stamps.length+' 帧';ctx.clearRect(0,0,W,H);if($('skeleton').checked&&pts)draw(ctx,pts);$('zoom-box').hidden=!$('zoom').checked;if($('zoom').checked&&v.readyState>=2){const points=(pts||[]).filter(valid);if(points.length>10){const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);const h=Math.min(H,W*.75,Math.max(H*.3,(maxy-miny)*1.3,(maxx-minx)*.95)),w=h*4/3,x=Math.max(0,Math.min(W-w,(minx+maxx-w)/2)),y=Math.max(0,Math.min(H-h,(miny+maxy-h)/2));zx.drawImage(v,x,y,w,h,0,0,320,240);if($('skeleton').checked)draw(zx,pts,x,y,320/w);}else{zx.fillStyle='#2e4e3d';zx.fillRect(0,0,320,240);zx.fillStyle='#cbd7be';zx.font='14px sans-serif';zx.textAlign='center';zx.fillText('本帧没有可靠人体位置',160,120);}}if(loop&&selected&&!v.paused&&t>=Math.min(D.video.duration,selected.time+1.3))v.currentTime=Math.max(0,selected.time-1.3);}
 $('subtitle').textContent=D.video.filename+' · '+R.player.description;$('player').textContent=R.player.description;$('rating').textContent=Number(R.assessment.rating).toFixed(1);$('rating-confidence').textContent='等级置信度 · '+confidence[R.assessment.confidence];$('summary').textContent=R.summary;$('basis').textContent=R.assessment.basis;R.assessment.not_observed.forEach(s=>$('not-observed').append(node('li',s)));R.limitations.forEach(s=>$('limits').append(node('li',s)));
 const hasPose=P.reviewed&&P.frames.some(f=>f.landmarks);for(const id of ['skeleton','zoom']){$(id).disabled=!hasPose;$(id).checked=!!hasPose;$(id).addEventListener('change',()=>render(v.currentTime));}$('pose-note').textContent=hasPose?'真实本地姿态预测 · 低可见节点隐藏 · 遮挡不补画。姿态可在文字报告完成后生成，仅作回看辅助。':'未运行或未通过复核的姿态不显示骨架；逐帧回看仍可使用。';$('provenance').textContent=(P.notes||[]).join(' ')+' '+(D.provenance.model||'当前 Agent 基于真实画面撰写。');
-D.events.forEach(e=>{const b=node('button',undefined,'keyframe');b.dataset.event=e.id;const img=node('img');img.src=e.image;img.alt=e.title+' '+time(e.time);b.append(img,node('small',time(e.time)),node('strong',e.title));b.addEventListener('click',()=>choose(e));$('keyframes').append(b);const f=node('button',undefined,'finding');f.append(node('strong',e.title),node('p',e.interpretation),node('small',(kind[e.kind]||'已有基础')+' · 判断置信度'+confidence[e.confidence]));f.addEventListener('click',()=>choose(e,true));$('findings').append(f);});
-R.priorities.forEach((p,i)=>{const d=p.drill,card=node('article',undefined,'drill-card'+(p.kind==='potential'?' potential':''));card.append(node('span',String(i+1).padStart(2,'0')+' / '+kind[p.kind]+' · 判断置信度'+confidence[p.confidence],'step-label'),node('h3',d.title),node('p',p.interpretation));const refs=node('div',undefined,'evidence-links');p.evidence.forEach(ref=>{const b=node('button','↗ 回看 '+time(ref.timestamp),'text-button');b.addEventListener('click',()=>choose({id:'ref',time:ref.timestamp,frame_id:ref.frame_id,title:p.title,observation:ref.description},true));refs.append(b);});card.append(refs);if(p.kind==='potential'){const note=node('div',undefined,'hypothesis');note.append(node('strong','潜在问题备注'),node('p','直接观察：'+p.observation),node('p','其他解释：'+p.alternative));card.append(note);}card.append(node('p','准备：'+d.setup,'setup'),node('small','建议安排：'+d.duration,'small-note'));const ol=node('ol');d.steps.forEach(s=>ol.append(node('li',s)));card.append(ol,node('blockquote',d.cue));const measure=node('div',undefined,'measure');measure.append(node('strong','练完怎么判断'),node('p',d.success_criterion),node('p','有帮助时：'+d.supports),node('p','没有帮助时：'+d.against));card.append(measure);const details=node('details',undefined,'report-details');details.append(node('summary','难度调整与方法出处'),node('p','简单一点：'+d.easier),node('p','进阶：'+d.harder),node('p',d.source_kind==='authored'?'本报告设计的练习，未验证个人训练效果。':'参考练习；根据本次视频调整。'));d.sources.forEach(source=>{const a=node('a',source.title+' ↗');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';details.append(a);});details.append(node('p',d.adaptation));card.append(details);$('drills').append(card);});
-if(!R.priorities.length)$('drills').append(node('p','当前画面没有支持具体专项的充分依据，先保留已有动作。'));
-for(const finding of R.strengths.concat(R.priorities)){const row=node('div',undefined,'evidence-row');row.append(node('h4',finding.title),node('p','观察：'+finding.observation),node('p','判断：'+finding.interpretation));finding.evidence.forEach(ref=>row.append(node('p',ref.frame_id+' · '+time(ref.timestamp)+' · '+ref.description,'small-note')));$('evidence-list').append(row);}
+D.events.forEach(e=>{const b=node('button',undefined,'keyframe');b.dataset.event=e.id;const img=node('img');img.src=e.image;img.alt=e.title+' '+time(e.time);b.append(img,node('small',time(e.time)),node('strong',e.title));b.addEventListener('click',()=>choose(e));$('keyframes').append(b);const f=node('button',undefined,'finding');f.append(node('strong',e.title),node('p',e.interpretation),node('small',(roles[e.role]||kind[e.kind]||'已有基础')+' · 判断置信度'+confidence[e.confidence]));f.addEventListener('click',()=>choose(e,true));$('findings').append(f);});
+function evidenceLinks(refs,title){
+  const links=node('div',undefined,'evidence-links');
+  refs.forEach(ref=>{const b=node('button','↗ 回看 '+time(ref.timestamp),'text-button');b.addEventListener('click',()=>choose({id:'ref',time:ref.timestamp,frame_id:ref.frame_id,title,observation:ref.description},true));links.append(b);});
+  return links;
+}
+function trainingCard(p){
+  const d=p.drill,s=p.selection,card=node('article',undefined,'drill-card'+(roleOf(p)==='trial'?' potential':''));
+  card.append(node('h3',d.title),node('p',s?s.why_this_player:p.interpretation));
+  card.append(evidenceLinks(p.evidence,p.title));
+  if(s){
+    card.append(node('p','适用来球：'+s.situation),node('p','继续保留：'+s.preserve));
+    const basis=node('details',undefined,'report-details');
+    basis.append(node('summary','为什么给我这项建议'),node('p','观察：'+p.observation),node('p','解释：'+p.interpretation),node('p','其他解释：'+p.alternative));
+    for(const [key,label] of [['comparison','对照与反例'],['outcome','回球或后续影响']]){
+      basis.append(node('h4',label),node('p',s[key].note),evidenceLinks(s[key].evidence,p.title+' · '+label));
+    }
+    basis.append(node('small','判断置信度：'+confidence[p.confidence],'small-note'));card.append(basis);
+  }else if(p.kind==='potential'){
+    const note=node('div',undefined,'hypothesis');note.append(node('strong','潜在问题备注'),node('p','直接观察：'+p.observation),node('p','其他解释：'+p.alternative));card.append(note);
+  }
+  if(d.test_variable)card.append(node('p','本次只检验：'+d.test_variable,'setup'));
+  card.append(node('p','准备：'+d.setup,'setup'),node('small','建议安排：'+d.duration,'small-note'));
+  const ol=node('ol');d.steps.forEach(step=>ol.append(node('li',step)));card.append(ol,node('blockquote',d.cue));
+  const measure=node('div',undefined,'measure');measure.append(node('strong','练完怎么判断'),node('p',d.success_criterion),node('p','有帮助时：'+d.supports),node('p','没有帮助时：'+d.against));card.append(measure);
+  const details=node('details',undefined,'report-details');details.append(node('summary','难度调整与方法出处'),node('p','简单一点：'+d.easier),node('p','进阶：'+d.harder),node('p',d.source_kind==='authored'?'本报告设计的练习，未验证个人训练效果。':'参考练习；根据本次视频调整。'));
+  d.sources.forEach(source=>{const a=node('a',source.title+' ↗');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';details.append(a);});details.append(node('p',d.adaptation));card.append(details);
+  return card;
+}
+const trainingGroups=['focus','trial','optional'].map(role=>({role,items:R.priorities.filter(p=>roleOf(p)===role)}));
+const hasFocus=trainingGroups[0].items.length>0,hasTrial=trainingGroups[1].items.length>0;
+$('training-intro').textContent=hasFocus?'先练已反复出现并影响击球的重点，再用录像复查。':hasTrial?'本片尚未确认需要优先纠正的短板。先用下面的练习检验一个具体问题。':'本片没有足够依据选出个人纠正重点，先保留已有动作。';
+trainingGroups.forEach(({role,items})=>{
+  if(!items.length)return;
+  const group=node(role==='optional'?'details':'section',undefined,'training-group');group.dataset.role=role;
+  group.append(node(role==='optional'?'summary':'h3',roles[role]));items.forEach(p=>group.append(trainingCard(p)));$('drills').append(group);
+});
+for(const finding of R.strengths.concat(R.priorities)){
+  const row=node('div',undefined,'evidence-row');row.append(node('h4',finding.title),node('p','观察：'+finding.observation),node('p','判断：'+finding.interpretation));
+  const refs=[...finding.evidence,...(finding.selection?.comparison.evidence||[]),...(finding.selection?.outcome.evidence||[])];
+  refs.forEach(ref=>row.append(node('p',ref.frame_id+' · '+time(ref.timestamp)+' · '+ref.description,'small-note')));$('evidence-list').append(row);
+}
 function step(delta){loop=false;const i=pending===null?nearest(v.currentTime):pending;seek(stamps[Math.max(0,Math.min(stamps.length-1,i+delta))]);}
 function showShotData(){
   const data=D.shots;if(!data||!Array.isArray(data.shots)||!data.summary)return;

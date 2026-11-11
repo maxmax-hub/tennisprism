@@ -2,7 +2,7 @@
 
 **看清这一拍，知道下一次怎么练。**
 
-[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.1.0 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.1.0) · [验证记录](STATUS.md)
+[skills.sh 技能页](https://skills.sh/maxmax-hub/tennisprism/tennisprism) · [v1.2.0 下载](https://github.com/maxmax-hub/tennisprism/releases/tag/v1.2.0) · [验证记录](STATUS.md)
 
 免费、MIT 开源的 Agent Skill。把网球视频交给你正在使用的 AI Agent，一次得到有画面依据的水平判断、具体训练建议，以及带视频、逐帧回看和可选人体骨架的本地 H5 报告。
 
@@ -12,9 +12,9 @@ English: an open-source tennis video review Skill for your existing coding agent
 
 ## 你会得到什么
 
-- **初步判断**：NTRP 尺度的视频估计、独立置信度、已具备的能力和最值得练的 1–3 项。
+- **初步判断**：NTRP 尺度的视频估计、独立置信度、已具备的能力和有依据的 0–3 项训练建议。
 - **逐拍数据**：记录实际查看样本的动作、触球高度区间、来球与回球深浅；有可靠事件和姿态时计算时间与二维投影指标，未知项与有效分母分开显示。不是整场自动计数或厘米级测量。
-- **具体练法**：准备条件、步骤、建议时长、动作提示、难度调整，以及练完记录什么。
+- **个人训练建议**：说明适用来球、为什么选给你、对照片段、应保留的能力，以及一次只检验的变量。页面区分本次重点、先验证和可选拓展；不为填满条数推荐通用练习。
 - **潜在问题也有行动建议**：分清直接观察与原因推测，提供对照试练，说明什么结果支持调整、什么结果应保留原动作。
 - **H5 复盘报告**：对话发视频后默认生成，包含本地视频播放、证据跳转、逐帧与慢放；成功运行并复核姿态模型时，增加真实骨架与人物跟随放大。
 
@@ -44,7 +44,7 @@ npx skills add maxmax-hub/tennisprism --skill tennisprism -a claude-code -g
 
 ### 不使用 Node.js：手动安装
 
-下载 [v1.1.0 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.1.0/tennisprism-1.1.0.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
+下载 [v1.2.0 Skill 安装包](https://github.com/maxmax-hub/tennisprism/releases/download/v1.2.0/tennisprism-1.2.0.zip)，解压后复制完整的 `tennisprism` 文件夹；也可以下载本仓库中的 `skills/tennisprism` 文件夹。不要只复制 `SKILL.md`：
 
 | 宿主 | 个人 Skill 目录 |
 |---|---|
@@ -94,7 +94,7 @@ Agent 会整理并实际查看视频画面，必要时补采动作过程，保�
 
 ### 从旧版本更新
 
-重新从本仓库安装完整 Skill，保留你自己的本地定制与运行目录；不要只替换 `SKILL.md`。让 Agent 重新读取 1.1.0（可打开新对话），并重新启动本地服务。旧版正在运行的进程不会随文件更新而自动升级。1.1.0 增加逐拍数据、有效样本统计、局部加密取帧和有条件的二维姿态指标；保留结论与 H5 一次交付和网页自动接收流程。旧报告不会自动增加未分析的数据。已有视频不需要删除：网页流程可使用原来的 workspace 启动并等待，接收未完成的任务。若安装工具提示覆盖，请先确认没有需要保留的自定义修改。
+重新从本仓库安装完整 Skill，保留你自己的本地定制与运行目录；不要只替换 `SKILL.md`。让 Agent 重新读取 1.2.0（可打开新对话），并重新启动本地服务。旧版正在运行的进程不会随文件更新而自动升级。1.2.0 增加有对照依据的个人训练选择、单变量试练和分组报告，兼容旧 3.0 报告；保留逐拍数据、有效样本统计、局部加密取帧和有条件的二维姿态指标。保留结论与 H5 一次交付和网页自动接收流程。旧报告不会自动增加未分析的数据或新训练判断。同一人的历史资料须明确关联并复核；当前没有自动身份识别或跨会话档案检索。已有视频不需要删除：网页流程可使用原来的 workspace 启动并等待，接收未完成的任务。若安装工具提示覆盖，请先确认没有需要保留的自定义修改。
 
 ## 第一次试用建议
 

@@ -1,0 +1,334 @@
+{
+  "type": "object",
+  "properties": {
+    "evidence_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "3.0"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "player": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "rating_system": {
+          "type": "string",
+          "enum": [
+            "NTRP"
+          ]
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 7,
+          "enum": [
+            1.0,
+            1.5,
+            2.0,
+            2.5,
+            3.0,
+            3.5,
+            4.0,
+            4.5,
+            5.0,
+            5.5,
+            6.0,
+            6.5,
+            7.0
+          ],
+          "description": "NTRP scale video estimate in half-step levels, never an official issued rating."
+        },
+        "rating_status": {
+          "type": "string",
+          "enum": [
+            "video_estimate"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "basis": {
+          "type": "string"
+        },
+        "not_observed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "rating_system",
+        "rating",
+        "rating_status",
+        "label",
+        "confidence",
+        "basis",
+        "not_observed"
+      ],
+      "additionalProperties": false
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "observation": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "frame_id": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "frame_id",
+                "timestamp",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "title",
+          "observation",
+          "interpretation",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "priorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "observation": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "frame_id": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "frame_id",
+                "timestamp",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "drill": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "success_criterion": {
+                "type": "string"
+              },
+              "setup": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "string"
+              },
+              "cue": {
+                "type": "string"
+              },
+              "supports": {
+                "type": "string"
+              },
+              "against": {
+                "type": "string"
+              },
+              "easier": {
+                "type": "string"
+              },
+              "harder": {
+                "type": "string"
+              },
+              "adaptation": {
+                "type": "string"
+              },
+              "source_kind": {
+                "type": "string",
+                "enum": [
+                  "referenced",
+                  "authored"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "title",
+              "steps",
+              "success_criterion",
+              "setup",
+              "duration",
+              "cue",
+              "supports",
+              "against",
+              "easier",
+              "harder",
+              "adaptation",
+              "source_kind",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "potential",
+              "development"
+            ]
+          },
+          "alternative": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "observation",
+          "interpretation",
+          "confidence",
+          "evidence",
+          "drill",
+          "kind",
+          "alternative"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 3
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_session_focus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "evidence_id",
+    "schema_version",
+    "summary",
+    "player",
+    "assessment",
+    "strengths",
+    "priorities",
+    "limitations",
+    "next_session_focus"
+  ],
+  "additionalProperties": false
+}

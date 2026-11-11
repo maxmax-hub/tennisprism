@@ -48,9 +48,9 @@ def build(store,run):
     events=[]
     for i,finding in enumerate(report['strengths']+report['priorities']):
         e=finding['evidence'][0];frame=lookup[e['frame_id']]
-        for ref in finding['evidence']:
+        for ref in (e for group in reporting.evidence_groups(finding) for e in group):
             actual=lookup[ref['frame_id']];shutil.copy2(folder/'evidence'/actual['file'],out/'evidence'/actual['file'])
-        events.append({'id':str(i),'time':e['timestamp'],'frame_id':e['frame_id'],'image':'evidence/'+frame['file'],'title':finding['title'],'observation':finding['observation'],'interpretation':finding['interpretation'],'kind':finding.get('kind','strength'),'confidence':finding['confidence']})
+        events.append({'id':str(i),'time':e['timestamp'],'frame_id':e['frame_id'],'image':'evidence/'+frame['file'],'title':finding['title'],'observation':finding['observation'],'interpretation':finding['interpretation'],'kind':finding.get('kind','strength'),'role':reporting.training_role(finding) if 'drill' in finding else 'strength','confidence':finding['confidence']})
     data={'report':report,'events':events,'evidence':{k:{**f,'image':'evidence/'+f['file']} for k,f in lookup.items()},'timestamps':stamps,'video':{'filename':video['filename'],'duration':video['metadata']['duration'],'width':width,'height':height},'pose':pose,'provenance':run.get('provenance',{})}
     if shot_metrics is not None:
         data['shots']=shot_metrics
